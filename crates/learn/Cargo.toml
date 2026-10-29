@@ -1,0 +1,8 @@
+[package]
+name = "sancho-learn"
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+license.workspace = true
+
+[dependencies]

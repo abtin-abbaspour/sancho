@@ -1,0 +1,20 @@
+[workspace]
+resolver = "2"
+members = ["crates/*"]
+
+[workspace.package]
+version = "0.0.1"
+edition = "2021"
+publish = false
+license = "MIT OR Apache-2.0"
+
+[workspace.dependencies]
+sancho-core = { path = "crates/core" }
+sancho-profile = { path = "crates/profile" }
+sancho-resolve = { path = "crates/resolve" }
+sancho-match = { path = "crates/match" }
+sancho-plan = { path = "crates/plan" }
+sancho-exec = { path = "crates/exec" }
+sancho-journal = { path = "crates/journal" }
+sancho-explain = { path = "crates/explain" }
+sancho-learn = { path = "crates/learn" }

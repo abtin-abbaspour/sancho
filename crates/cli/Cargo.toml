@@ -1,0 +1,16 @@
+[package]
+name = "sancho"
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+license.workspace = true
+
+[[bin]]
+name = "sancho"
+path = "src/main.rs"
+
+[dependencies]
+# clap: argument parsing and --help/--version.
+clap = { version = "4.5", features = ["derive"] }
+# libc: geteuid() for the root refusal; no std equivalent.
+libc = "0.2"
