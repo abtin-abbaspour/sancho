@@ -100,6 +100,37 @@ impl ProfileKey {
     pub fn from_name(s: &str) -> Option<ProfileKey> {
         Self::ALL.into_iter().find(|k| k.name() == s)
     }
+
+    /// Every value detection can report for this fact.
+    pub fn values(self) -> &'static [&'static str] {
+        use ProfileKey::*;
+        match self {
+            Distro => &[
+                "arch",
+                "artix",
+                "cachyos",
+                "endeavouros",
+                "garuda",
+                "manjaro",
+                "arch_derivative",
+                "unsupported",
+            ],
+            Init => &["systemd", "openrc", "runit", "dinit", "s6", "unknown"],
+            Network => &[
+                "networkmanager",
+                "connman",
+                "iwd",
+                "systemd_networkd",
+                "none",
+            ],
+            Audio => &["pipewire", "pulseaudio", "none"],
+            Display => &["wayland", "x11", "none"],
+            AurHelper => &["paru", "yay", "none"],
+            RootFs => &["btrfs", "ext4", "xfs", "f2fs", "zfs", "bcachefs", "other"],
+            SnapshotTool => &["snapper", "timeshift", "none"],
+            Bootloader => &["systemd_boot", "limine", "refind", "grub", "unknown"],
+        }
+    }
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -163,10 +194,17 @@ impl Recipe {
         }
 
         for (key, values) in &self.requires {
-            if values.is_empty() || values.iter().any(|v| v.trim().is_empty()) {
+            let field = format!("requires.{}", key.name());
+            if values.is_empty() {
+                p.push(&field, "must list at least one value");
+            }
+            for v in values
+                .iter()
+                .filter(|v| !key.values().contains(&v.as_str()))
+            {
                 p.push(
-                    format!("requires.{}", key.name()),
-                    "must list at least one non-empty value",
+                    &field,
+                    format!("'{v}' is not one of: {}", key.values().join(", ")),
                 );
             }
         }

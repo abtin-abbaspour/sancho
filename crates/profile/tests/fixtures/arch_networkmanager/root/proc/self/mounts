@@ -1,0 +1,3 @@
+proc /proc proc rw,nosuid 0 0
+/dev/nvme0n1p2 / btrfs rw,relatime,subvol=/@ 0 0
+/dev/nvme0n1p1 /boot vfat rw 0 0

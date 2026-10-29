@@ -2,12 +2,22 @@
 
 use std::process::ExitCode;
 
-use clap::Parser;
+use clap::{CommandFactory, Parser, Subcommand};
+use sancho_profile::{detect, Host};
 
 /// Turn plain-language requests into verified, reversible Arch Linux tasks.
 #[derive(Parser, Debug)]
 #[command(name = "sancho", version, about)]
-struct Cli {}
+struct Cli {
+    #[command(subcommand)]
+    command: Option<Command>,
+}
+
+#[derive(Subcommand, Debug)]
+enum Command {
+    /// Show what sancho detected about this system.
+    Profile,
+}
 
 const ROOT_REFUSAL: &str = "sancho: refusing to run as root.\n\
 Run sancho as your normal user; it asks for sudo for each command that needs it \
@@ -30,14 +40,27 @@ fn effective_uid() -> u32 {
 fn main() -> ExitCode {
     // clap handles --help/--version (and usage errors) inside parse() and exits,
     // so those are allowed as root. Everything else is checked before it runs.
-    let _cli = Cli::parse();
+    let cli = Cli::parse();
 
     if let Err(msg) = check_not_root(effective_uid()) {
         eprintln!("{msg}");
         return ExitCode::FAILURE;
     }
 
+    match cli.command {
+        None => {
+            let _ = Cli::command().print_help();
+        }
+        Some(Command::Profile) => print_profile(),
+    }
     ExitCode::SUCCESS
+}
+
+fn print_profile() {
+    let profile = detect(&Host::current());
+    for (key, value) in profile.iter() {
+        println!("{:<14}{value}", key.name());
+    }
 }
 
 #[cfg(test)]
@@ -57,7 +80,6 @@ mod tests {
 
     #[test]
     fn cli_definition_is_valid() {
-        use clap::CommandFactory;
         Cli::command().debug_assert();
     }
 }

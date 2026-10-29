@@ -468,6 +468,12 @@ fn recipe_errors_name_the_field() {
                 Field("requires.init"),
                 "at least one",
             ),
+            (
+                "tests = ",
+                "requires = { init = [\"sytemd\"] }\ntests = ",
+                Field("requires.init"),
+                "'sytemd' is not one of: systemd",
+            ),
         ],
         recipe_errors,
     );

@@ -30,9 +30,9 @@ recipes run in podman containers or through the mock executor.
 
 ## M2 — System profile
 - Detect: distro, init, network stack, audio, display server, AUR helper, root fs,
-  snapshot tool.
-- Cache to `~/.local/state/sancho/profile.json`; `sancho profile` prints it.
-- Tests use fixture filesystems / command outputs, not the host.
+  snapshot tool, bootloader. File reads only; detected fresh each run (no cache, see
+  DESIGN.md §5). `sancho profile` prints it.
+- Tests use fixture filesystems, not the host.
 
 **Done when:** profile detection is covered by fixture tests for at least: vanilla Arch +
 NetworkManager, Arch + iwd, Artix + OpenRC (recipe exclusion works).

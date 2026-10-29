@@ -28,6 +28,31 @@ fn help_describes_the_tool() {
     assert!(stdout.contains("--version"));
 }
 
+#[test]
+fn profile_lists_every_fact() {
+    let out = run(&["profile"]);
+    assert!(out.status.success());
+    let stdout = String::from_utf8_lossy(&out.stdout);
+    let keys: Vec<&str> = stdout
+        .lines()
+        .filter_map(|l| l.split_whitespace().next())
+        .collect();
+    assert_eq!(
+        keys,
+        [
+            "distro",
+            "init",
+            "network",
+            "audio",
+            "display",
+            "aur_helper",
+            "root_fs",
+            "snapshot_tool",
+            "bootloader"
+        ]
+    );
+}
+
 /// Runs the binary as uid 0 inside an unprivileged user namespace
 /// (`unshare --map-root-user`). This grants no real privileges on the host.
 /// Returns `None` when user namespaces are unavailable.

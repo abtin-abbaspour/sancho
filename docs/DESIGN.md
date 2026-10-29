@@ -173,12 +173,26 @@ later) may only return a candidate ID or `ask_user`.
 
 ## 5. System profile
 
-Detected on first run, cached, refreshed on demand or when stale:
-distro (Arch / Artix / derivatives like Omarchy), init (systemd/openrc/runit), network
-stack (NetworkManager/iwd/systemd-networkd/connman), audio (PipeWire/PulseAudio),
-display server (X11/Wayland), AUR helper (paru/yay/none), root filesystem (btrfs →
-snapshots available), snapshot tool (snapper/timeshift), bootloader.
-Recipes declare requirements; mismatches exclude the recipe from matching.
+Nine facts, each with a fixed vocabulary (`ProfileKey::values()` in `sancho-core`), so
+recipe `requires` values are checked at load time:
+
+| Fact | Values | Evidence |
+|---|---|---|
+| `distro` | arch, artix, cachyos, endeavouros, garuda, manjaro, arch_derivative, unsupported | os-release `ID`, `ID_LIKE` |
+| `init` | systemd, openrc, runit, dinit, s6, unknown | `/run/systemd/system` etc., then `/proc/1/comm` |
+| `network` | networkmanager, connman, iwd, systemd_networkd, none | running daemons (NM/ConnMan win over iwd, their usual Wi-Fi backend) |
+| `audio` | pipewire, pulseaudio, none | running daemons |
+| `display` | wayland, x11, none | `XDG_SESSION_TYPE`, then `WAYLAND_DISPLAY` / `DISPLAY` |
+| `aur_helper` | paru, yay, none | executable on `PATH` |
+| `root_fs` | btrfs, ext4, xfs, f2fs, zfs, bcachefs, other | last `/` entry in `/proc/self/mounts` |
+| `snapshot_tool` | snapper, timeshift, none | installed **and** configured for `/` |
+| `bootloader` | systemd_boot, limine, refind, grub, unknown | ESP/`/boot` files, then `/etc/default/*` |
+
+Detection reads files only (never runs commands), takes well under a millisecond, and
+runs fresh on every invocation. It is not cached: a cache goes stale (the display differs
+between SSH and desktop; packages change) and stale facts would produce wrong plans.
+Recipes declare `requires`; any unmet requirement excludes the recipe from matching, with
+a reason ("needs init systemd, this system has openrc").
 
 ## 6. Execution
 
