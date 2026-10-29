@@ -1,0 +1,10 @@
+id = "systemctl.status"
+summary = "Show whether a systemd unit is running, with its recent log lines"
+command = ["systemctl", "status", "--no-pager", "{unit}"]
+package = "systemd"
+needs_root = false
+risk = "low"
+read_only = true
+
+[args]
+unit = { type = "systemd_unit", help = "Unit to inspect" }

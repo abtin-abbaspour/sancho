@@ -42,58 +42,107 @@ below threshold.
 
 ## 3. Tiers
 
+### Data files
+Recipes and primitives are TOML (`data/recipes/*.toml`, `data/primitives/*.toml`), one
+item per file, file name = id. TOML is chosen over YAML for explicit typing (no `on` →
+`true` surprises), no anchors/aliases, and a small, well-maintained parser. Unknown keys
+are errors; every problem is reported with file, line/column or field path, and reason.
+
+IDs are `group.action` (`systemctl.enable`, `device.grant_hid_browser_access`).
+
+**Templates.** Strings may contain `{name}` or `{name.attr}` placeholders; `{{`/`}}` are
+literal braces. Filled values become single argv elements, stdin, or display text —
+never shell input.
+
 ### Tier 1 — recipes (MVP)
 Curated, tested, multi-step tasks. Built from primitives.
 
-```yaml
-id: device.grant_hid_browser_access
-version: 1
-summary: "Let a Chromium-based browser access a HID device (e.g. keyboard configurators)"
-domains: [input_devices]
-patterns:
-  - "give {browser} access to (my )?{device}"
-  - "let {browser} (configure|access) (my )?{device}"
-slots:
-  device:  {type: hid_device}
-  browser: {type: browser, filter: {webhid: true}}
-requires: {profile: {init: systemd}}
-risk: medium
-steps:
-  - primitive: file.write_root
-    args:
-      path: "/etc/udev/rules.d/70-sancho-{device.vid}-{device.pid}.rules"
-      content: 'KERNEL=="hidraw*", ATTRS{idVendor}=="{device.vid}", ATTRS{idProduct}=="{device.pid}", TAG+="uaccess"'
-    explain: "Allow your user session to access {device.name} ({device.vid}:{device.pid})"
-  - primitive: udevadm.reload_trigger
-    explain: "Reload device rules so the change applies now"
-notes:
-  - "WebHID only works in Chromium-based browsers; warn Firefox users before planning."
-tests:
-  verified_by: mock      # udev isn't meaningful in containers
-  reason: "Requires real hidraw devices; resolver tested against fixtures"
+```toml
+id = "device.grant_hid_browser_access"
+version = 1
+summary = "Let a Chromium-based browser access a HID device (e.g. keyboard configurators)"
+domains = ["input_devices"]
+patterns = [
+  "give {browser} access to (my )?{device}",
+  "let {browser} (configure|access) (my )?{device}",
+]
+risk = "medium"
+notes = ["WebHID only works in Chromium-based browsers; warn Firefox users before planning."]
+
+[slots]
+device = { type = "hid_device" }
+browser = { type = "browser", filter = { webhid = true } }
+
+[requires]            # profile facts; each lists the accepted values
+init = ["systemd"]
+
+[[steps]]
+primitive = "file.write_root"
+explain = "Allow your user session to access {device.name} ({device.vid}:{device.pid})"
+[steps.args]
+mode = "0644"
+path = "/etc/udev/rules.d/70-sancho-{device.vid}-{device.pid}.rules"
+content = 'KERNEL=="hidraw*", ATTRS{{idVendor}}=="{device.vid}", ATTRS{{idProduct}}=="{device.pid}", TAG+="uaccess"'
+
+[[steps]]
+primitive = "udevadm.reload"
+explain = "Reload device rules"
+
+[[steps]]
+primitive = "udevadm.trigger"
+args = { subsystem = "hidraw" }
+explain = "Apply the new rule to {device.name} now"
+
+[tests]
+verified_by = "mock"  # udev isn't meaningful in containers
+reason = "Requires real hidraw devices; resolver tested against fixtures"
 ```
+
+Rules enforced at load time:
+- Every step supplies every arg of its primitive.
+- Args of system-resolved types (`systemd_unit`, `package`, `hid_device`, …) must be
+  filled by exactly one slot of the same type — never a literal or a composed string.
+- Literals are checked against the arg type (`path` absolute without `..`, `file_mode`
+  octal, `count` integer, `choice` in `values`). A composed `path` must start with a
+  literal absolute prefix.
+- Compound slots (`hid_device`, `browser`) are referenced by attribute (`{device.vid}`).
+- `{profile.<fact>}` may be used only if `requires` constrains that fact.
+- A `multiple` slot may only fill a `variadic` arg.
+- Recipe `risk` is at least the highest step primitive risk.
+- Every slot is used by some step; `tests.reason` is required unless `verified_by = "container"`.
 
 ### Tier 2 — command primitives (MVP: schemas used by recipes and `explain`; standalone
 generation is post-MVP)
 
-```yaml
-primitive: systemctl.enable
-command: [systemctl, enable]
-package: systemd
-needs_root: true
-args:
-  unit: {type: systemd_unit}
-flags:
-  --now: {effect: service_runtime}
-risk: medium
-effects:
-  - {kind: service_enablement, target: "{unit}"}
-  - {kind: service_runtime, target: "{unit}", if_flag: --now}
-read_only: false
-dry_run: null
+A primitive is **one fixed command line** with typed holes. Variants (e.g. enable vs
+enable-and-start) are separate primitives or separate recipe steps, so every step has a
+fixed argv shape and a fixed set of effects — which keeps journaling and undo per step.
+
+```toml
+id = "systemctl.enable"
+summary = "Enable a systemd unit so it starts at boot"
+command = ["systemctl", "enable", "{unit}"]
+package = "systemd"
+needs_root = true
+risk = "medium"
+read_only = false
+effects = [{ kind = "service_enablement", target = "{unit}" }]
+
+[args]
+unit = { type = "systemd_unit", help = "Unit to enable" }
 ```
 
-`read_only: true` primitives (e.g. `lsusb`, `systemctl status`, `ip link`) may run
+- `command` is the exact argv. Each arg appears in it exactly once as a whole-token
+  placeholder (`"x{unit}"` is rejected); the program name may only come from a `choice`
+  arg (e.g. `{helper}` ∈ paru/yay).
+- `variadic` args expand to one argv element per value. `text` args are passed on
+  `stdin` and only there.
+- `choice` values may not start with `-`, so they can never act as flags.
+- `interactive = true` runs the command on a PTY. `dry_run` is the same command in the
+  tool's show-only mode (e.g. `pacman --print`), using the same args.
+- `read_only` primitives declare no effects; all others declare at least one.
+
+`read_only = true` primitives (e.g. `lsusb`, `systemctl status`, `ip link`) may run
 without a y/n prompt, but are always displayed.
 
 ### Tier 3 — free-form (post-MVP)
@@ -113,7 +162,11 @@ Each slot type has a resolver that enumerates candidates from the system and a v
 | `net_iface` | `ip -j link` | Wireless detection via `/sys/class/net/*/wireless` |
 | `browser` | installed packages + .desktop files | Capability flags (e.g. `webhid`) |
 | `user_group` | `/etc/group` | |
-| `path` | filesystem | Existence/permission checks |
+| `user` | current user, `/etc/passwd` | |
+
+Literal types, checked at load and fill time: `path`, `file_mode`, `count`, `text`
+(stdin only), `choice` (fixed `values`). Resolved values interpolated into templates
+(e.g. `{device.vid}` in a path) are validated by their resolver to be safe there.
 
 Candidates are given opaque IDs (`d1`, `d2`). A selector (patterns/rules now, a model
 later) may only return a candidate ID or `ask_user`.
@@ -152,8 +205,11 @@ service that was already enabled before we touched it).
 | `service_runtime` | `is-active` | set back | reversible |
 | `package_install` / `package_remove` | package set + versions | remove added / reinstall from cache | reversible while cached |
 | `group_membership` | user's groups | set back | reversible |
-| `runtime` (reloads, module reloads) | — | — | no undo needed |
-| destructive (rm, mkfs, dd) | — | — | irreversible (recipes use `gio trash` instead of rm) |
+| `radio_state` | radio on/off | set back | reversible |
+| `package_upgrade` | snapshot, if a snapshot tool exists | guided snapshot rollback | snapshot only |
+| `package_cache_prune` | — | — | irreversible (invalidates package undo) |
+| `runtime` (restarts, reloads, triggers) | — | — | no undo needed |
+| `destructive` (rm, mkfs, dd) | — | — | irreversible (recipes use `gio trash` instead of rm) |
 
 System upgrades: downgrading individual packages is a partial upgrade (unsupported on
 Arch). Undo = filesystem snapshot (snapper/timeshift) taken before the upgrade, with
@@ -244,7 +300,7 @@ don't trust raw probabilities.
 
 ## 13. Evaluation
 
-`eval/requests.yaml`: NL request → expected recipe + slots (or `clarify`).
+`eval/requests.toml`: NL request → expected recipe + slots (or `clarify`).
 Metrics: intent accuracy, slot accuracy, **wrong-plan rate** (critical), clarification rate,
 latency, total RAM.
 Recipe verification layers: podman containers (packages/files), QEMU VMs (systemd/boot/

@@ -1,0 +1,10 @@
+id = "usb.list"
+version = 1
+summary = "List USB devices"
+patterns = ["list (my )?usb devices"]
+risk = "low"
+tests = { verified_by = "container" }
+
+[[steps]]
+primitive = "lsusb.all"
+explain = "List USB devices"

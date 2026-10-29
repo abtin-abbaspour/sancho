@@ -1,0 +1,7 @@
+id = "lsusb.list"
+summary = "List connected USB devices"
+command = ["lsusb"]
+package = "usbutils"
+needs_root = false
+risk = "low"
+read_only = true

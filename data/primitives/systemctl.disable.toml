@@ -1,0 +1,11 @@
+id = "systemctl.disable"
+summary = "Disable a systemd unit so it no longer starts at boot"
+command = ["systemctl", "disable", "{unit}"]
+package = "systemd"
+needs_root = true
+risk = "medium"
+read_only = false
+effects = [{ kind = "service_enablement", target = "{unit}" }]
+
+[args]
+unit = { type = "systemd_unit", help = "Unit to disable" }

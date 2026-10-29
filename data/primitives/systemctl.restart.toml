@@ -1,0 +1,11 @@
+id = "systemctl.restart"
+summary = "Restart a systemd unit (starts it if it is not running)"
+command = ["systemctl", "restart", "{unit}"]
+package = "systemd"
+needs_root = true
+risk = "medium"
+read_only = false
+effects = [{ kind = "runtime", target = "{unit}" }]
+
+[args]
+unit = { type = "systemd_unit", help = "Unit to restart" }

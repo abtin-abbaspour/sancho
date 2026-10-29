@@ -1,0 +1,11 @@
+id = "systemctl.enable"
+summary = "Enable a systemd unit so it starts at boot"
+command = ["systemctl", "enable", "{unit}"]
+package = "systemd"
+needs_root = true
+risk = "medium"
+read_only = false
+effects = [{ kind = "service_enablement", target = "{unit}" }]
+
+[args]
+unit = { type = "systemd_unit", help = "Unit to enable" }

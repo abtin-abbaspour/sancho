@@ -1,0 +1,12 @@
+id = "paccache.keep"
+summary = "Delete cached package files, keeping the newest versions of each package"
+command = ["paccache", "-r", "-k", "{keep}"]
+dry_run = ["paccache", "-d", "-k", "{keep}"]
+package = "pacman-contrib"
+needs_root = true
+risk = "medium"
+read_only = false
+effects = [{ kind = "package_cache_prune", target = "/var/cache/pacman/pkg" }]
+
+[args]
+keep = { type = "count", help = "How many versions of each package to keep" }

@@ -1,0 +1,13 @@
+# Valid recipe that fills an arg from a profile fact.
+id = "system.update_aur"
+version = 1
+summary = "Upgrade AUR packages"
+patterns = ["update (my )?aur packages"]
+risk = "high"
+requires = { aur_helper = ["paru", "yay"] }
+tests = { verified_by = "container" }
+
+[[steps]]
+primitive = "aur_helper.upgrade"
+args = { helper = "{profile.aur_helper}" }
+explain = "Upgrade AUR packages with {profile.aur_helper}"

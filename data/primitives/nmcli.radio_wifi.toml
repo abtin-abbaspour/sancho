@@ -1,0 +1,11 @@
+id = "nmcli.radio_wifi"
+summary = "Turn the Wi-Fi radio on or off with NetworkManager"
+command = ["nmcli", "radio", "wifi", "{state}"]
+package = "networkmanager"
+needs_root = false
+risk = "medium"
+read_only = false
+effects = [{ kind = "radio_state", target = "wifi" }]
+
+[args]
+state = { type = "choice", values = ["on", "off"], help = "Turn Wi-Fi on or off" }

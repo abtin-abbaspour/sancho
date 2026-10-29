@@ -1,0 +1,13 @@
+id = "file.write_root"
+summary = "Write a root-owned file with the given permissions (content is passed on stdin)"
+command = ["install", "-m", "{mode}", "/dev/stdin", "{path}"]
+package = "coreutils"
+needs_root = true
+risk = "medium"
+read_only = false
+effects = [{ kind = "file_write", target = "{path}" }]
+
+[args]
+mode = { type = "file_mode", help = "Permissions for the file" }
+path = { type = "path", help = "Absolute path of the file; its directory must exist" }
+content = { type = "text", stdin = true, help = "File content" }

@@ -1,0 +1,7 @@
+id = "ip.link"
+summary = "List network interfaces and their state (JSON)"
+command = ["ip", "-j", "link", "show"]
+package = "iproute2"
+needs_root = false
+risk = "low"
+read_only = true

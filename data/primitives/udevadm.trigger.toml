@@ -1,0 +1,11 @@
+id = "udevadm.trigger"
+summary = "Re-apply udev rules to plugged-in devices of one subsystem"
+command = ["udevadm", "trigger", "--action=change", "--subsystem-match", "{subsystem}"]
+package = "systemd"
+needs_root = true
+risk = "low"
+read_only = false
+effects = [{ kind = "runtime", target = "udev devices" }]
+
+[args]
+subsystem = { type = "choice", values = ["hidraw", "usb", "input", "net"], help = "Device subsystem to re-apply rules to" }

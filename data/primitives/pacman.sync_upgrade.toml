@@ -1,0 +1,9 @@
+id = "pacman.sync_upgrade"
+summary = "Refresh package databases and upgrade every installed package"
+command = ["pacman", "-Syu"]
+package = "pacman"
+needs_root = true
+interactive = true
+risk = "high"
+read_only = false
+effects = [{ kind = "package_upgrade", target = "system" }]

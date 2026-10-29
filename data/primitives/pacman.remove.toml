@@ -1,0 +1,13 @@
+id = "pacman.remove"
+summary = "Remove installed packages (their dependencies are kept)"
+command = ["pacman", "-R", "{packages}"]
+dry_run = ["pacman", "-R", "--print", "{packages}"]
+package = "pacman"
+needs_root = true
+interactive = true
+risk = "medium"
+read_only = false
+effects = [{ kind = "package_remove", target = "{packages}" }]
+
+[args]
+packages = { type = "package", variadic = true, help = "Packages to remove" }

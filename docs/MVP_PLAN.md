@@ -18,13 +18,13 @@ recipes run in podman containers or through the mock executor.
 **Done when:** workspace builds, CI script passes, root refusal has a test.
 
 ## M1 — Core types and schemas
-- Rust types + YAML loading for `Primitive`, `Recipe`, `Slot`, `Effect`, `Plan`.
+- Rust types + TOML loading for `Primitive`, `Recipe`, `Slot`, `Effect`, `Plan`.
 - Schema validation with clear errors (file, field, reason).
-- Write ~15 primitives: `pacman.sync_upgrade`, `pacman.install`, `pacman.remove`,
+- Write the starter primitives: `pacman.sync_upgrade`, `pacman.install`, `pacman.remove`,
   `paccache.keep`, `aur_helper.upgrade`, `systemctl.enable`, `systemctl.disable`,
-  `systemctl.restart`, `systemctl.status` (read-only), `file.write_root`,
-  `udevadm.reload_trigger`, `usermod.add_group`, `lsusb` (read-only),
-  `ip.link` (read-only), `nmcli.radio_wifi`.
+  `systemctl.start`, `systemctl.stop`, `systemctl.restart`, `systemctl.status` (read-only),
+  `file.write_root`, `udevadm.reload`, `udevadm.trigger`, `usermod.add_group`,
+  `lsusb.list` (read-only), `ip.link` (read-only), `nmcli.radio_wifi`.
 
 **Done when:** all data files load; invalid fixtures produce precise errors.
 
@@ -50,7 +50,7 @@ with both names; with a keyboard + mouse → mouse excluded.
 - Normalization (synonyms, typo correction against library vocabulary).
 - Pattern matching with slot capture; BM25 fallback over recipe summaries/patterns.
 - Clarification policy: margin between top-2, missing/ambiguous slots, low score.
-- `eval` binary: runs `eval/requests.yaml`, reports intent accuracy, slot accuracy,
+- `eval` binary: runs `eval/requests.toml`, reports intent accuracy, slot accuracy,
   wrong-plan rate, clarification rate.
 - Write ≥ 150 eval requests across the starter recipes, including paraphrases, typos,
   and requests that *should* clarify or not match.
@@ -120,5 +120,5 @@ eval and RAM benchmark · diagnose-and-fix recipes + `sancho fix` · Tier 2 stan
 bring-your-own-model backend · signed recipe packs · GitHub-issue sharing · QEMU VM tests ·
 query interface / MCP server for other tools.
 
-## Open decisions (ask the maintainer when reached)
-YAML crate choice. (Licensing decided: `MIT OR Apache-2.0`, see DESIGN.md §14.)
+## Decided
+Licensing: `MIT OR Apache-2.0` (DESIGN.md §14). Data format: TOML via `toml` (DESIGN.md §3).

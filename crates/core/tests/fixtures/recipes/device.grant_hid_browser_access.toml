@@ -1,0 +1,39 @@
+# Valid recipe from DESIGN.md §3, used to test recipe validation against data/primitives.
+id = "device.grant_hid_browser_access"
+version = 1
+summary = "Let a Chromium-based browser access a HID device (e.g. keyboard configurators)"
+domains = ["input_devices"]
+patterns = [
+  "give {browser} access to (my )?{device}",
+  "let {browser} (configure|access) (my )?{device}",
+]
+risk = "medium"
+notes = ["WebHID only works in Chromium-based browsers; warn Firefox users before planning."]
+
+[slots]
+device = { type = "hid_device" }
+browser = { type = "browser", filter = { webhid = true } }
+
+[requires]
+init = ["systemd"]
+
+[[steps]]
+primitive = "file.write_root"
+explain = "Allow your user session to access {device.name} ({device.vid}:{device.pid}) from {browser.name}"
+[steps.args]
+mode = "0644"
+path = "/etc/udev/rules.d/70-sancho-{device.vid}-{device.pid}.rules"
+content = 'KERNEL=="hidraw*", ATTRS{{idVendor}}=="{device.vid}", ATTRS{{idProduct}}=="{device.pid}", TAG+="uaccess"'
+
+[[steps]]
+primitive = "udevadm.reload"
+explain = "Reload device rules"
+
+[[steps]]
+primitive = "udevadm.trigger"
+args = { subsystem = "hidraw" }
+explain = "Apply the new rule to {device.name} now"
+
+[tests]
+verified_by = "mock"
+reason = "Requires real hidraw devices; resolver tested against fixtures"

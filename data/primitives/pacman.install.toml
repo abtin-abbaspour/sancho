@@ -1,0 +1,13 @@
+id = "pacman.install"
+summary = "Install packages from the official repositories, skipping ones already up to date"
+command = ["pacman", "-S", "--needed", "{packages}"]
+dry_run = ["pacman", "-S", "--needed", "--print", "{packages}"]
+package = "pacman"
+needs_root = true
+interactive = true
+risk = "medium"
+read_only = false
+effects = [{ kind = "package_install", target = "{packages}" }]
+
+[args]
+packages = { type = "package", variadic = true, help = "Packages to install" }

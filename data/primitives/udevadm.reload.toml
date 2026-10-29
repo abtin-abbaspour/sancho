@@ -1,0 +1,8 @@
+id = "udevadm.reload"
+summary = "Make udev re-read its device rules"
+command = ["udevadm", "control", "--reload"]
+package = "systemd"
+needs_root = true
+risk = "low"
+read_only = false
+effects = [{ kind = "runtime", target = "udev rules" }]

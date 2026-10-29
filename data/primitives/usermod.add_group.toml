@@ -1,0 +1,12 @@
+id = "usermod.add_group"
+summary = "Add a user to a supplementary group (takes effect at next login)"
+command = ["usermod", "-a", "-G", "{group}", "{user}"]
+package = "shadow"
+needs_root = true
+risk = "medium"
+read_only = false
+effects = [{ kind = "group_membership", target = "{user}" }]
+
+[args]
+group = { type = "user_group", help = "Group to add the user to" }
+user = { type = "user", help = "User to add" }

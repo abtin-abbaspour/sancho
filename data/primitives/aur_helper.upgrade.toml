@@ -1,0 +1,11 @@
+id = "aur_helper.upgrade"
+summary = "Upgrade packages installed from the AUR (runs as you; the helper asks for sudo itself)"
+command = ["{helper}", "-Sua"]
+needs_root = false
+interactive = true
+risk = "high"
+read_only = false
+effects = [{ kind = "package_upgrade", target = "aur" }]
+
+[args]
+helper = { type = "choice", values = ["paru", "yay"], help = "Installed AUR helper" }
