@@ -1,0 +1,9 @@
+extra firefox 133.0-1 [installed]
+extra git 2.47.1-1 [installed]
+extra vlc 3.0.21-8 [installed]
+extra vlc-plugins-all 3.0.21-8
+extra chromium 131.0.6778.85-1
+extra firefox-developer-edition 134.0b9-1
+extra firefox-i18n-de 133.0-1
+extra obs-studio 31.0.0-1
+extra Bad_Name 1.0-1

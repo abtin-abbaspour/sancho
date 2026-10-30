@@ -1,0 +1,5 @@
+PATH=/usr/local/bin:/usr/bin
+USER=user
+XDG_SESSION_TYPE=wayland
+WAYLAND_DISPLAY=wayland-1
+DISPLAY=:0

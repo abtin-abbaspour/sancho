@@ -1,77 +1,23 @@
 //! System profile detection (distro, init, network stack, audio, ...).
 //!
-//! Detection only reads files under a root directory (`/` on a real system,
-//! a fixture tree in tests) and the environment; it never runs commands.
-//! It is cheap, so the profile is detected fresh on every run rather than
-//! cached, which would go stale (e.g. display differs between SSH and desktop).
+//! Detection only reads files and the environment through [`System`]; it runs
+//! no commands. It is cheap, so the profile is detected fresh on every run
+//! rather than cached, which would go stale (e.g. display differs between SSH
+//! and desktop).
 
 use std::collections::BTreeMap;
-use std::fs;
-use std::os::unix::fs::PermissionsExt;
-use std::path::PathBuf;
 
 use sancho_core::recipe::ProfileKey;
+use sancho_core::System;
 
-/// Where to look: a filesystem root and an environment.
-#[derive(Debug, Clone)]
-pub struct Host {
-    pub root: PathBuf,
-    pub env: BTreeMap<String, String>,
-}
-
-impl Host {
-    pub fn current() -> Host {
-        Host {
-            root: PathBuf::from("/"),
-            env: std::env::vars().collect(),
-        }
-    }
-
-    fn path(&self, rel: &str) -> PathBuf {
-        self.root.join(rel.trim_start_matches('/'))
-    }
-
-    fn exists(&self, rel: &str) -> bool {
-        self.path(rel).exists()
-    }
-
-    fn read(&self, rel: &str) -> Option<String> {
-        fs::read_to_string(self.path(rel)).ok()
-    }
-
-    fn env(&self, key: &str) -> Option<&str> {
-        self.env
-            .get(key)
-            .map(String::as_str)
-            .filter(|v| !v.is_empty())
-    }
-
-    /// Whether an executable `name` is on `PATH`.
-    fn has_program(&self, name: &str) -> bool {
-        let path = self.env("PATH").unwrap_or("/usr/local/bin:/usr/bin");
-        path.split(':').filter(|d| d.starts_with('/')).any(|dir| {
-            fs::metadata(self.path(dir).join(name))
-                .is_ok_and(|m| m.is_file() && m.permissions().mode() & 0o111 != 0)
-        })
-    }
-
-    /// Names (`/proc/<pid>/comm`) of running processes visible to us.
-    fn processes(&self) -> Vec<String> {
-        let Ok(entries) = fs::read_dir(self.path("/proc")) else {
-            return Vec::new();
-        };
-        entries
-            .flatten()
-            .filter(|e| {
-                e.file_name()
-                    .to_string_lossy()
-                    .bytes()
-                    .all(|b| b.is_ascii_digit())
-            })
-            .filter_map(|e| fs::read_to_string(e.path().join("comm")).ok())
-            .map(|s| s.trim_end().to_string())
-            .collect()
-    }
+/// Names (`/proc/<pid>/comm`) of running processes visible to us.
+fn processes(sys: &dyn System) -> Vec<String> {
+    sys.read_dir("/proc")
+        .into_iter()
+        .filter(|n| n.bytes().all(|b| b.is_ascii_digit()))
+        .filter_map(|pid| sys.read(&format!("/proc/{pid}/comm")))
+        .map(|s| s.trim_end().to_string())
+        .collect()
 }
 
 /// Detected facts. Every key is present; every value is one of `key.values()`.
@@ -124,22 +70,22 @@ impl Profile {
     }
 }
 
-pub fn detect(host: &Host) -> Profile {
-    let procs = host.processes();
+pub fn detect(sys: &dyn System) -> Profile {
+    let procs = processes(sys);
     let running = |name: &str| procs.iter().any(|p| p == name);
     let facts = ProfileKey::ALL
         .into_iter()
         .map(|key| {
             let value = match key {
-                ProfileKey::Distro => distro(host),
-                ProfileKey::Init => init(host),
+                ProfileKey::Distro => distro(sys),
+                ProfileKey::Init => init(sys),
                 ProfileKey::Network => network(&running),
                 ProfileKey::Audio => audio(&running),
-                ProfileKey::Display => display(host),
-                ProfileKey::AurHelper => aur_helper(host),
-                ProfileKey::RootFs => root_fs(host),
-                ProfileKey::SnapshotTool => snapshot_tool(host),
-                ProfileKey::Bootloader => bootloader(host),
+                ProfileKey::Display => display(sys),
+                ProfileKey::AurHelper => aur_helper(sys),
+                ProfileKey::RootFs => root_fs(sys),
+                ProfileKey::SnapshotTool => snapshot_tool(sys),
+                ProfileKey::Bootloader => bootloader(sys),
             };
             debug_assert!(key.values().contains(&value), "{value} not in {key:?}");
             (key, value)
@@ -149,10 +95,10 @@ pub fn detect(host: &Host) -> Profile {
 }
 
 /// From os-release(5): `/etc/os-release`, falling back to `/usr/lib/os-release`.
-fn distro(host: &Host) -> &'static str {
-    let Some(text) = host
+fn distro(sys: &dyn System) -> &'static str {
+    let Some(text) = sys
         .read("/etc/os-release")
-        .or_else(|| host.read("/usr/lib/os-release"))
+        .or_else(|| sys.read("/usr/lib/os-release"))
     else {
         return "unsupported";
     };
@@ -176,7 +122,7 @@ fn distro(host: &Host) -> &'static str {
 }
 
 /// Runtime markers each init system creates, then PID 1's name.
-fn init(host: &Host) -> &'static str {
+fn init(sys: &dyn System) -> &'static str {
     // sd_booted(3): /run/systemd/system exists only when systemd is PID 1.
     let markers = [
         ("/run/systemd/system", "systemd"),
@@ -185,10 +131,10 @@ fn init(host: &Host) -> &'static str {
         ("/run/dinitctl", "dinit"),
         ("/run/s6", "s6"),
     ];
-    if let Some((_, v)) = markers.iter().find(|(m, _)| host.exists(m)) {
+    if let Some((_, v)) = markers.iter().find(|(m, _)| sys.exists(m)) {
         return v;
     }
-    match host.read("/proc/1/comm").as_deref().map(str::trim_end) {
+    match sys.read("/proc/1/comm").as_deref().map(str::trim_end) {
         Some("systemd") => "systemd",
         Some("openrc-init") => "openrc",
         Some("runit") => "runit",
@@ -224,26 +170,26 @@ fn audio(running: &dyn Fn(&str) -> bool) -> &'static str {
     }
 }
 
-fn display(host: &Host) -> &'static str {
-    match host.env("XDG_SESSION_TYPE") {
+fn display(sys: &dyn System) -> &'static str {
+    match sys.env("XDG_SESSION_TYPE").as_deref() {
         Some("wayland") => "wayland",
         Some("x11") => "x11",
-        _ if host.env("WAYLAND_DISPLAY").is_some() => "wayland",
-        _ if host.env("DISPLAY").is_some() => "x11",
+        _ if sys.env("WAYLAND_DISPLAY").is_some() => "wayland",
+        _ if sys.env("DISPLAY").is_some() => "x11",
         _ => "none",
     }
 }
 
-fn aur_helper(host: &Host) -> &'static str {
+fn aur_helper(sys: &dyn System) -> &'static str {
     ["paru", "yay"]
         .into_iter()
-        .find(|h| host.has_program(h))
+        .find(|h| sys.has_program(h))
         .unwrap_or("none")
 }
 
 /// Filesystem type of the last mount on `/` in `/proc/self/mounts`.
-fn root_fs(host: &Host) -> &'static str {
-    let fstype = host
+fn root_fs(sys: &dyn System) -> &'static str {
+    let fstype = sys
         .read("/proc/self/mounts")
         .and_then(|m| {
             m.lines().rev().find_map(|l| {
@@ -262,10 +208,10 @@ fn root_fs(host: &Host) -> &'static str {
 }
 
 /// A snapshot tool counts only when installed and configured for `/`.
-fn snapshot_tool(host: &Host) -> &'static str {
-    if host.has_program("snapper") && host.exists("/etc/snapper/configs/root") {
+fn snapshot_tool(sys: &dyn System) -> &'static str {
+    if sys.has_program("snapper") && sys.exists("/etc/snapper/configs/root") {
         "snapper"
-    } else if host.has_program("timeshift") && host.exists("/etc/timeshift/timeshift.json") {
+    } else if sys.has_program("timeshift") && sys.exists("/etc/timeshift/timeshift.json") {
         "timeshift"
     } else {
         "none"
@@ -275,7 +221,7 @@ fn snapshot_tool(host: &Host) -> &'static str {
 /// Files on the ESP or /boot first (often unreadable without root), then the
 /// configuration packages leave in /etc. GRUB is last because /etc/default/grub
 /// can outlive a switch to another bootloader.
-fn bootloader(host: &Host) -> &'static str {
+fn bootloader(sys: &dyn System) -> &'static str {
     let evidence: [(&str, &[&str]); 4] = [
         (
             "systemd_boot",
@@ -307,6 +253,6 @@ fn bootloader(host: &Host) -> &'static str {
     ];
     evidence
         .iter()
-        .find(|(_, files)| files.iter().any(|f| host.exists(f)))
+        .find(|(_, files)| files.iter().any(|f| sys.exists(f)))
         .map_or("unknown", |(v, _)| v)
 }

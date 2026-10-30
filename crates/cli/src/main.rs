@@ -3,7 +3,8 @@
 use std::process::ExitCode;
 
 use clap::{CommandFactory, Parser, Subcommand};
-use sancho_profile::{detect, Host};
+use sancho_core::LiveSystem;
+use sancho_profile::detect;
 
 /// Turn plain-language requests into verified, reversible Arch Linux tasks.
 #[derive(Parser, Debug)]
@@ -57,7 +58,7 @@ fn main() -> ExitCode {
 }
 
 fn print_profile() {
-    let profile = detect(&Host::current());
+    let profile = detect(&LiveSystem);
     for (key, value) in profile.iter() {
         println!("{:<14}{value}", key.name());
     }

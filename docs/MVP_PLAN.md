@@ -39,9 +39,11 @@ NetworkManager, Arch + iwd, Artix + OpenRC (recipe exclusion works).
 
 ## M3 — Resolvers
 - `hid_device` (udev property filters: keyboard/mouse), `systemd_unit`, `package`,
-  `net_iface` (wireless detection), `browser` (with `webhid` capability), `user_group`.
+  `net_iface` (wireless detection), `browser` (with `webhid` capability), `user_group`,
+  `user`.
 - Each resolver: enumerate → candidate list with opaque IDs + display names; validate.
-- Fixtures in `eval/fixtures/` captured from real machines (read-only commands only).
+- Fixtures in `eval/fixtures/systems/`, captured from real machines with
+  `scripts/capture-fixture.sh` (read-only, scrubbed) or hand-written for scenarios.
 
 **Done when:** "my keyboard" with one keyboard → auto-selected; with two → `ask_user`
 with both names; with a keyboard + mouse → mouse excluded.

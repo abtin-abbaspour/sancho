@@ -6,22 +6,15 @@ use std::path::{Path, PathBuf};
 
 use sancho_core::parse_recipe;
 use sancho_core::recipe::ProfileKey;
-use sancho_profile::{detect, Host, Profile};
+use sancho_core::FixtureSystem;
+use sancho_profile::{detect, Profile};
 
-fn fixture(name: &str) -> Host {
-    let dir = Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("tests/fixtures")
-        .join(name);
-    let env = fs::read_to_string(dir.join("env"))
-        .unwrap()
-        .lines()
-        .filter_map(|l| l.split_once('='))
-        .map(|(k, v)| (k.to_string(), v.to_string()))
-        .collect();
-    Host {
-        root: dir.join("root"),
-        env,
-    }
+fn fixture(name: &str) -> FixtureSystem {
+    FixtureSystem::new(
+        Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("../../eval/fixtures/systems")
+            .join(name),
+    )
 }
 
 #[track_caller]
@@ -137,6 +130,7 @@ fn any_listed_value_satisfies_a_requirement() {
 
 // ---- edge cases on scratch trees ----
 
+/// A throwaway fixture: files under `<dir>/root`, environment passed in.
 struct Scratch(PathBuf);
 
 impl Scratch {
@@ -145,25 +139,20 @@ impl Scratch {
             .join("profile")
             .join(name);
         let _ = fs::remove_dir_all(&dir);
-        fs::create_dir_all(&dir).unwrap();
+        fs::create_dir_all(dir.join("root")).unwrap();
         Scratch(dir)
     }
 
     fn file(&self, rel: &str, content: &str) -> &Self {
-        let path = self.0.join(rel);
+        let path = self.0.join("root").join(rel);
         fs::create_dir_all(path.parent().unwrap()).unwrap();
         fs::write(path, content).unwrap();
         self
     }
 
-    fn host(&self, env: &[(&str, &str)]) -> Host {
-        Host {
-            root: self.0.clone(),
-            env: env
-                .iter()
-                .map(|(k, v)| (k.to_string(), v.to_string()))
-                .collect(),
-        }
+    fn host(&self, env: &[(&str, &str)]) -> FixtureSystem {
+        env.iter()
+            .fold(FixtureSystem::new(&self.0), |s, (k, v)| s.with_env(k, v))
     }
 }
 
@@ -229,7 +218,7 @@ fn snapshot_tool_needs_root_config() {
     let s = Scratch::new("snapper");
     s.file("usr/bin/snapper", "");
     fs::set_permissions(
-        s.0.join("usr/bin/snapper"),
+        s.0.join("root/usr/bin/snapper"),
         std::os::unix::fs::PermissionsExt::from_mode(0o755),
     )
     .unwrap();
@@ -251,9 +240,33 @@ fn root_fs_uses_the_last_mount_on_root() {
 
 #[test]
 fn detection_only_reports_known_values() {
-    for name in ["arch_networkmanager", "arch_iwd", "artix_openrc"] {
+    for name in [
+        "arch_networkmanager",
+        "arch_iwd",
+        "artix_openrc",
+        "captured_desktop",
+    ] {
         for (k, v) in detect(&fixture(name)).iter() {
             assert!(k.values().contains(&v), "{k:?}={v}");
         }
     }
+}
+
+#[test]
+fn captured_cachyos_desktop() {
+    assert_profile(
+        &detect(&fixture("captured_desktop")),
+        &[
+            (Distro, "cachyos"),
+            (Init, "systemd"),
+            (Network, "networkmanager"),
+            (Audio, "pipewire"),
+            (Display, "wayland"),
+            (AurHelper, "none"),
+            (RootFs, "btrfs"),
+            (SnapshotTool, "snapper"),
+            // /boot is unreadable without root; /etc/default/limine gives it away.
+            (Bootloader, "limine"),
+        ],
+    );
 }

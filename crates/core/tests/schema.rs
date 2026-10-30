@@ -434,6 +434,12 @@ fn recipe_errors_name_the_field() {
             ),
             (
                 r#"{ type = "systemd_unit" }"#,
+                r#"{ type = "systemd_unit", filter = { enabled = "yes" } }"#,
+                Field("slots.unit.filter.enabled"),
+                "must be true or false",
+            ),
+            (
+                r#"{ type = "systemd_unit" }"#,
                 "{ type = \"systemd_unit\" }\nextra = { type = \"package\" }",
                 Field("slots.extra"),
                 "never used",
@@ -558,4 +564,29 @@ fn bad_library_reports_every_problem_with_its_file() {
 fn missing_primitives_dir_is_an_error() {
     let errors = Library::load(Path::new("/nonexistent/sancho-data")).unwrap_err();
     assert!(errors[0].reason.contains("cannot read directory"));
+}
+
+#[test]
+fn one_of_filters_check_their_values() {
+    let base =
+        std::fs::read_to_string(fixtures().join("recipes/device.grant_hid_browser_access.toml"))
+            .unwrap();
+    check_cases(
+        &base,
+        &[(
+            r#"device = { type = "hid_device" }"#,
+            r#"device = { type = "hid_device", filter = { input_class = "printer" } }"#,
+            At::Field("slots.device.filter.input_class"),
+            "must be one of: keyboard, mouse",
+        )],
+        recipe_errors,
+    );
+    let ok = base.replace(
+        r#"device = { type = "hid_device" }"#,
+        r#"device = { type = "hid_device", filter = { input_class = "keyboard" } }"#,
+    );
+    let recipe = parse_recipe(Path::new("t.toml"), &ok).unwrap();
+    let mut p = Problems::default();
+    recipe.validate(&mut p, &shipped().primitives);
+    assert!(p.is_empty(), "{:?}", p.0);
 }

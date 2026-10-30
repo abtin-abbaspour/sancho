@@ -6,3 +6,4 @@ publish.workspace = true
 license.workspace = true
 
 [dependencies]
+sancho-core.workspace = true

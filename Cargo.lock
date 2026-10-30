@@ -146,6 +146,7 @@ version = "0.0.1"
 dependencies = [
  "clap",
  "libc",
+ "sancho-core",
  "sancho-profile",
 ]
 
@@ -191,6 +192,9 @@ dependencies = [
 [[package]]
 name = "sancho-resolve"
 version = "0.0.1"
+dependencies = [
+ "sancho-core",
+]
 
 [[package]]
 name = "serde"

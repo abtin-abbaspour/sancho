@@ -1,0 +1,8 @@
+bluetooth.service                          enabled         disabled
+bluetooth.target                           static          -
+cups.service                               disabled        disabled
+cups.socket                                enabled         disabled
+getty@.service                             enabled         enabled
+NetworkManager.service                     enabled         disabled
+sshd.service                               disabled        disabled
+-evil.service                              enabled         enabled

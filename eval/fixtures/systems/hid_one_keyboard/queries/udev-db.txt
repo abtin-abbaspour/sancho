@@ -1,0 +1,31 @@
+P: /devices/platform/i8042/serio0/input/input0
+E: SUBSYSTEM=input
+E: ID_INPUT=1
+E: ID_INPUT_KEYBOARD=1
+
+P: /devices/pci0000:00/0000:00:14.0/usb1/1-1/1-1:1.0/0003:3434:0121.0001
+E: SUBSYSTEM=hid
+E: HID_ID=0003:00003434:00000121
+E: HID_NAME=Keychron Q2
+
+P: /devices/pci0000:00/0000:00:14.0/usb1/1-1/1-1:1.0/0003:3434:0121.0001/hidraw/hidraw1
+E: SUBSYSTEM=hidraw
+
+P: /devices/pci0000:00/0000:00:14.0/usb1/1-1/1-1:1.0/0003:3434:0121.0001/input/input10
+E: SUBSYSTEM=input
+E: ID_INPUT=1
+E: ID_INPUT_KEYBOARD=1
+
+P: /devices/pci0000:00/0000:00:14.0/usb1/1-1/1-1:1.1/0003:3434:0121.0002
+E: SUBSYSTEM=hid
+E: HID_ID=0003:00003434:00000121
+E: HID_NAME=Keychron Q2
+
+P: /devices/pci0000:00/0000:00:14.0/usb1/1-1/1-1:1.1/0003:3434:0121.0002/hidraw/hidraw2
+E: SUBSYSTEM=hidraw
+
+P: /devices/pci0000:00/0000:00:14.0/usb1/1-1/1-1:1.1/0003:3434:0121.0002/input/input20
+E: SUBSYSTEM=input
+E: ID_INPUT=1
+E: ID_INPUT_KEY=1
+

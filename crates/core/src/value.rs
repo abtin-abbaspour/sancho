@@ -42,8 +42,8 @@ impl ValueType {
     /// Attributes usable as `{slot.attr}` in recipe templates.
     pub fn attributes(self) -> &'static [&'static str] {
         match self {
-            ValueType::HidDevice => &["name", "vid", "pid", "hidraw"],
-            ValueType::Browser => &["name", "package", "desktop_id"],
+            ValueType::HidDevice => &["name", "vid", "pid"],
+            ValueType::Browser => &["name", "desktop_id"],
             _ => &[],
         }
     }
@@ -53,14 +53,16 @@ impl ValueType {
         !self.attributes().is_empty()
     }
 
-    /// Filter keys a recipe slot of this type may declare, and whether each is
-    /// a boolean (`true`) or a string (`false`). Semantics live in the resolvers.
-    pub fn filter_keys(self) -> &'static [(&'static str, bool)] {
+    /// Filters a recipe slot of this type may declare. Resolvers tag each
+    /// candidate; a `Bool` filter `k = b` keeps candidates where having tag `k`
+    /// equals `b`, a `OneOf` filter `k = "v"` keeps candidates tagged `v`.
+    pub fn filters(self) -> &'static [(&'static str, FilterKind)] {
         match self {
-            ValueType::HidDevice => &[("input_class", false)],
-            ValueType::Browser => &[("webhid", true)],
-            ValueType::Package => &[("installed", true)],
-            ValueType::NetIface => &[("wireless", true)],
+            ValueType::HidDevice => &[("input_class", FilterKind::OneOf(INPUT_CLASSES))],
+            ValueType::Browser => &[("webhid", FilterKind::Bool)],
+            ValueType::Package => &[("installed", FilterKind::Bool)],
+            ValueType::NetIface => &[("wireless", FilterKind::Bool)],
+            ValueType::SystemdUnit => &[("enabled", FilterKind::Bool)],
             _ => &[],
         }
     }
@@ -119,6 +121,15 @@ impl fmt::Display for ValueType {
         f.write_str(s)
     }
 }
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum FilterKind {
+    Bool,
+    OneOf(&'static [&'static str]),
+}
+
+/// udev `ID_INPUT_*` classes a HID device can be filtered by.
+pub const INPUT_CLASSES: &[&str] = &["keyboard", "mouse", "touchpad", "joystick", "tablet"];
 
 /// Literal path (or the literal start of a templated path) must be absolute
 /// and must not contain `..`, NUL or empty components.

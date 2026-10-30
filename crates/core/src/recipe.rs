@@ -7,7 +7,7 @@ use serde::Deserialize;
 use crate::primitive::{check_values, Primitive};
 use crate::template::{is_ident, Part, Ref, Template};
 use crate::validate::{check_id, Problems};
-use crate::value::{check_path, check_path_fragment, Risk, ValueType};
+use crate::value::{check_path, check_path_fragment, FilterKind, Risk, ValueType};
 
 #[derive(Debug, Clone, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -247,13 +247,15 @@ impl Recipe {
         check_values(p, &field, slot.ty, &slot.values);
         for (key, value) in &slot.filter {
             let ffield = format!("{field}.filter.{key}");
-            match slot.ty.filter_keys().iter().find(|(k, _)| k == key) {
-                None => p.push(ffield, format!("{} slots have no '{key}' filter", slot.ty)),
-                Some((_, is_bool)) if *is_bool != matches!(value, FilterValue::Bool(_)) => {
-                    let want = if *is_bool { "true/false" } else { "a string" };
-                    p.push(ffield, format!("must be {want}"));
+            match (slot.ty.filters().iter().find(|(k, _)| k == key), value) {
+                (None, _) => p.push(ffield, format!("{} slots have no '{key}' filter", slot.ty)),
+                (Some((_, FilterKind::Bool)), FilterValue::Bool(_)) => {}
+                (Some((_, FilterKind::Bool)), _) => p.push(ffield, "must be true or false"),
+                (Some((_, FilterKind::OneOf(vals))), FilterValue::String(v))
+                    if vals.contains(&v.as_str()) => {}
+                (Some((_, FilterKind::OneOf(vals))), _) => {
+                    p.push(ffield, format!("must be one of: {}", vals.join(", ")))
                 }
-                Some(_) => {}
             }
         }
         if slot.multiple && !slot.ty.is_resolved() {

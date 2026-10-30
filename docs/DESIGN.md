@@ -152,24 +152,36 @@ candidate recipe.
 
 ## 4. Slot types and resolvers
 
-Each slot type has a resolver that enumerates candidates from the system and a validator.
+Profile detection and resolvers read the system through one interface (`System` in
+`sancho-core`): file reads, the environment, and a closed enum of read-only queries
+(`udevadm info --export-db`, `systemctl list-unit-files`, `pacman -Q`, `pacman -Sl`), run
+with `LC_ALL=C` and a timeout. Nothing else can be executed through it. Tests use
+`FixtureSystem`, a captured tree (`eval/fixtures/systems/<name>/{root,queries,env}`).
 
-| Type | Source | Notes |
-|---|---|---|
-| `hid_device` | `/sys/class/hidraw`, `udevadm info` | Filter by udev props: `ID_INPUT_KEYBOARD=1`, `ID_INPUT_MOUSE=1`, etc. "my keyboard" = property filter, not inference |
-| `systemd_unit` | `systemctl list-unit-files` | Must exist |
-| `package` | `pacman -Q` / `pacman -Si` | Installed vs available |
-| `net_iface` | `ip -j link` | Wireless detection via `/sys/class/net/*/wireless` |
-| `browser` | installed packages + .desktop files | Capability flags (e.g. `webhid`) |
-| `user_group` | `/etc/group` | |
-| `user` | current user, `/etc/passwd` | |
+| Type | Source | Tags (for filters/mentions) | Notes |
+|---|---|---|---|
+| `hid_device` | udev db: `hid` devices with a `hidraw` child | `keyboard`, `mouse`, `touchpad`, `joystick`, `tablet` from `ID_INPUT_*` of their inputs | Grouped by vid:pid (what udev rules match); attrs `name`, `vid`, `pid` |
+| `systemd_unit` | `systemctl list-unit-files` | `enabled` | Templates (`x@.service`) skipped; a bare name means `.service`, as in systemctl |
+| `package` | `pacman -Q` + `pacman -Sl` | `installed` | Without the sync list only installed packages resolve |
+| `net_iface` | `/sys/class/net` (physical only) | `wireless`, `wired` | |
+| `browser` | `/usr/share/applications/*.desktop` with `WebBrowser` | `webhid` (Chromium family) | attrs `name`, `desktop_id` |
+| `user_group` | `/etc/group` | | |
+| `user` | `/etc/passwd`, UID 1000–59999 with a login shell | `current` | Defaults to the current user |
+
+Every value is validated for its type before it becomes a candidate (unit, package,
+interface and account name rules; 4-hex-digit vid/pid; no leading `-`); entries that fail
+are dropped, never repaired. Device-provided names are stripped of control characters.
+
+**Selection** (`resolve`): apply the slot's recipe filters → an exact key match on the
+user's mention selects → otherwise class words in the mention ("keyboard", "wifi", "me")
+filter by tag and the remaining words must all appear in the name → one survivor is
+selected, 2–10 become a question with opaque IDs (`c1`, `c2`, …), 0 or more than 10 is
+"no match" with a reason. Overlapping classes are kept: a keyboard with a mouse interface
+counts as both, so "my keyboard" asks rather than guesses. A selector (patterns/rules now,
+a model later) may only return a candidate ID or `ask_user`.
 
 Literal types, checked at load and fill time: `path`, `file_mode`, `count`, `text`
-(stdin only), `choice` (fixed `values`). Resolved values interpolated into templates
-(e.g. `{device.vid}` in a path) are validated by their resolver to be safe there.
-
-Candidates are given opaque IDs (`d1`, `d2`). A selector (patterns/rules now, a model
-later) may only return a candidate ID or `ask_user`.
+(stdin only), `choice` (fixed `values`).
 
 ## 5. System profile
 
