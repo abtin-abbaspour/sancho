@@ -3,7 +3,7 @@
 
 pkgname=sancho-git
 _pkgname=sancho
-pkgver=0.0.1.r17.g32674b6
+pkgver=0.0.1.r18.g6bc5f1f
 pkgrel=1
 pkgdesc="Plain-language Arch Linux tasks from verified recipes, with previews, a journal and undo (development version)"
 arch=('x86_64' 'aarch64')

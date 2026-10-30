@@ -1,14 +1,15 @@
 $ sancho disable tlp   # system: eval_desktop
 
-[verified recipe · service.disable v1] Disable a systemd service at boot and stop it now
+Disable a systemd service at boot and stop it now
+verified recipe · service.disable v1
 Risk: medium — you will be asked to confirm
 
   1. Stop tlp.service from starting at boot
      $ sudo systemctl disable tlp.service
-     can be undone
+     ↺ can be undone
 
   2. Stop tlp.service now
      $ sudo systemctl stop tlp.service
-     can be undone
+     ↺ can be undone
 
 Undo: every step can be undone with `sancho undo`

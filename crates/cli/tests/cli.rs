@@ -103,7 +103,7 @@ fn a_request_prints_its_plan() {
     assert!(out.status.success(), "{out:?}");
     let stdout = String::from_utf8_lossy(&out.stdout);
     assert!(
-        stdout.starts_with("[verified recipe · service.restart v1]"),
+        stdout.starts_with("Restart a systemd service\nverified recipe · service.restart v1\n"),
         "{stdout}"
     );
     assert!(stdout.contains("$ sudo systemctl restart sshd.service"));
@@ -201,7 +201,7 @@ fn a_learned_answer_skips_the_question_and_is_labeled() {
     assert!(out.status.success(), "{out:?}");
     let stdout = String::from_utf8_lossy(&out.stdout);
     assert!(
-        stdout.contains("Learned from your earlier answers:"),
+        stdout.contains("Learned from your earlier answers\n"),
         "{stdout}"
     );
     assert!(stdout.contains("(forget it: sancho learned rm 7)"));
@@ -352,6 +352,29 @@ fn a_session_never_runs_a_plan_without_a_terminal() {
     assert!(stderr.contains("nothing learned has ID 9"));
     let created: Vec<_> = std::fs::read_dir(&dir).unwrap().flatten().collect();
     assert!(created.is_empty(), "{created:?}");
+}
+
+#[test]
+fn colour_is_used_only_when_asked_for_or_on_a_terminal() {
+    let fixture = fixture();
+    let args = ["--fixture", fixture.as_str(), "restart", "sshd"];
+    let plain = run(&args);
+    assert!(!String::from_utf8_lossy(&plain.stdout).contains('\x1b'));
+    let forced = Command::new(BIN)
+        .args(args)
+        .env(
+            "SANCHO_DATA",
+            concat!(env!("CARGO_MANIFEST_DIR"), "/../../data"),
+        )
+        .env("CLICOLOR_FORCE", "1")
+        .output()
+        .unwrap();
+    let stdout = String::from_utf8_lossy(&forced.stdout);
+    assert!(
+        stdout.contains("\x1b[1mRestart a systemd service\x1b[0m"),
+        "{stdout}"
+    );
+    assert!(stdout.contains("\x1b[36msudo systemctl restart sshd.service\x1b[0m"));
 }
 
 /// Runs the binary as uid 0 inside an unprivileged user namespace

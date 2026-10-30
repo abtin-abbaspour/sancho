@@ -1,10 +1,11 @@
 $ sancho show disk usage   # system: eval_desktop
 
-[verified recipe · disk.usage v1] Show how much disk space is used and free
+Show how much disk space is used and free
+verified recipe · disk.usage v1
 Risk: low — read-only, runs without asking
 
   1. List mounted filesystems with their used and free space
      $ df -h -x tmpfs -x devtmpfs -x efivarfs -x overlay
-     read-only
+     · read-only
 
 Undo: nothing to undo

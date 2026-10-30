@@ -7,6 +7,7 @@ pub mod pattern;
 pub mod plan;
 pub mod primitive;
 pub mod recipe;
+pub mod style;
 pub mod system;
 pub mod template;
 pub mod validate;

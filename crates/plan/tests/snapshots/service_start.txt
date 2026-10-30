@@ -1,10 +1,11 @@
 $ sancho start nginx   # system: eval_desktop
 
-[verified recipe · service.start v1] Start a systemd service now (it will not start at boot)
+Start a systemd service now (it will not start at boot)
+verified recipe · service.start v1
 Risk: medium — you will be asked to confirm
 
   1. Start nginx.service now
      $ sudo systemctl start nginx.service
-     can be undone
+     ↺ can be undone
 
 Undo: every step can be undone with `sancho undo`

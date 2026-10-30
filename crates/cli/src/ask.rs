@@ -4,21 +4,31 @@
 use std::io::{self, BufRead, Write};
 
 use sancho_core::plan::Confirmation;
+use sancho_core::style::{Paint, Tone};
 
 /// Asks the user to pick one of `options` by number. `None` means cancelled
 /// (empty answer, `q`, or end of input).
 pub fn choose(
     input: &mut impl BufRead,
     out: &mut impl Write,
+    paint: &dyn Paint,
     question: &str,
     options: &[String],
 ) -> io::Result<Option<usize>> {
-    writeln!(out, "{question}")?;
-    for (i, o) in options.iter().enumerate() {
-        writeln!(out, "  {}) {o}", i + 1)?;
-    }
+    write_options(out, paint, question, options)?;
     loop {
-        write!(out, "Choose 1-{} (or q to cancel): ", options.len())?;
+        if paint.styled() {
+            write!(
+                out,
+                "{} ",
+                paint.paint(
+                    Tone::Accent,
+                    &format!("choose 1-{} · q to cancel ›", options.len())
+                )
+            )?;
+        } else {
+            write!(out, "Choose 1-{} (or q to cancel): ", options.len())?;
+        }
         out.flush()?;
         let Some(answer) = read_line(input)? else {
             return Ok(None);
@@ -33,11 +43,42 @@ pub fn choose(
     }
 }
 
+/// A question and its numbered options.
+pub fn write_options(
+    out: &mut impl Write,
+    paint: &dyn Paint,
+    question: &str,
+    options: &[String],
+) -> io::Result<()> {
+    if paint.styled() {
+        writeln!(
+            out,
+            "{} {}",
+            paint.paint(Tone::Accent, "?"),
+            paint.paint(Tone::Title, question)
+        )?;
+        for (i, o) in options.iter().enumerate() {
+            writeln!(
+                out,
+                "  {}  {o}",
+                paint.paint(Tone::Accent, &(i + 1).to_string())
+            )?;
+        }
+    } else {
+        writeln!(out, "{question}")?;
+        for (i, o) in options.iter().enumerate() {
+            writeln!(out, "  {}) {o}", i + 1)?;
+        }
+    }
+    Ok(())
+}
+
 /// Asks for confirmation as the plan requires. Anything but an explicit yes
 /// is a no.
 pub fn confirm(
     input: &mut impl BufRead,
     out: &mut impl Write,
+    paint: &dyn Paint,
     how: Confirmation,
 ) -> io::Result<bool> {
     let prompt = match how {
@@ -45,7 +86,12 @@ pub fn confirm(
         Confirmation::YesNo => "Proceed? [y/N] ",
         Confirmation::TypeYes => "This is high risk. Type yes to proceed: ",
     };
-    write!(out, "{prompt}")?;
+    let tone = if how == Confirmation::TypeYes {
+        Tone::Bad
+    } else {
+        Tone::Accent
+    };
+    write!(out, "{}", paint.paint(tone, prompt))?;
     out.flush()?;
     let answer = read_line(input)?.unwrap_or_default();
     Ok(match how {
@@ -65,6 +111,7 @@ fn read_line(input: &mut impl BufRead) -> io::Result<Option<String>> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use sancho_core::style::Plain;
 
     fn opts() -> Vec<String> {
         vec!["Chromium".into(), "Brave".into()]
@@ -76,6 +123,7 @@ mod tests {
         let r = choose(
             &mut "7\nx\n2\n".as_bytes(),
             &mut out,
+            &Plain,
             "Which browser?",
             &opts(),
         )
@@ -89,14 +137,16 @@ mod tests {
     #[test]
     fn choose_can_be_cancelled() {
         for input in ["\n", "q\n", ""] {
-            let r = choose(&mut input.as_bytes(), &mut Vec::new(), "?", &opts()).unwrap();
+            let r = choose(&mut input.as_bytes(), &mut Vec::new(), &Plain, "?", &opts()).unwrap();
             assert_eq!(r, None, "{input:?}");
         }
     }
 
     #[test]
     fn high_risk_needs_the_word_yes() {
-        let c = |input: &str, how| confirm(&mut input.as_bytes(), &mut Vec::new(), how).unwrap();
+        let c = |input: &str, how| {
+            confirm(&mut input.as_bytes(), &mut Vec::new(), &Plain, how).unwrap()
+        };
         assert!(c("yes\n", Confirmation::TypeYes));
         assert!(c("YES\n", Confirmation::TypeYes));
         assert!(!c("y\n", Confirmation::TypeYes));

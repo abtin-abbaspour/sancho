@@ -1,14 +1,15 @@
 $ sancho enable sshd   # system: eval_desktop
 
-[verified recipe · service.enable v1] Enable a systemd service at boot and start it now
+Enable a systemd service at boot and start it now
+verified recipe · service.enable v1
 Risk: medium — you will be asked to confirm
 
   1. Start sshd.service automatically at boot
      $ sudo systemctl enable sshd.service
-     can be undone
+     ↺ can be undone
 
   2. Start sshd.service now
      $ sudo systemctl start sshd.service
-     can be undone
+     ↺ can be undone
 
 Undo: every step can be undone with `sancho undo`

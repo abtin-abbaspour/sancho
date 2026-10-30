@@ -4,6 +4,7 @@ use std::io::{self, IsTerminal, Write};
 use std::process::ExitCode;
 use std::time::{SystemTime, UNIX_EPOCH};
 
+use sancho_core::style::{stdout_painter, Tone};
 use sancho_exec::{Executor, SudoExecutor};
 use sancho_journal::{
     apply_undo, plan_undo, Journal, JournalError, RunOutcome, Transaction, TxKind, TxStatus,
@@ -25,20 +26,26 @@ pub fn history() -> ExitCode {
         Err(e) => return fail(&e),
     };
     if txs.is_empty() {
-        println!("Nothing has been done yet.");
+        crate::ui::info("Nothing has been done yet.");
     }
     for t in &txs {
         let what = match &t.kind {
             TxKind::Do => t.request.clone(),
             TxKind::Undo { of } => format!("undo of {of}"),
         };
-        let status = match (&t.status, t.fully_undone()) {
-            (TxStatus::Failed { step }, _) => format!("failed at step {}", step + 1),
-            (TxStatus::Running, _) => "interrupted".into(),
-            (TxStatus::Completed, true) => "undone".into(),
-            (TxStatus::Completed, false) => "done".into(),
+        let (tone, status) = match (&t.status, t.fully_undone()) {
+            (TxStatus::Failed { step }, _) => (Tone::Bad, format!("failed at step {}", step + 1)),
+            (TxStatus::Running, _) => (Tone::Warn, "interrupted".into()),
+            (TxStatus::Completed, true) => (Tone::Muted, "undone".into()),
+            (TxStatus::Completed, false) => (Tone::Good, "done".into()),
         };
-        println!("{}  {}  {:<16} {what}", t.id, when(t.started), status);
+        let paint = stdout_painter();
+        println!(
+            "{}  {}  {} {what}",
+            paint.paint(Tone::Muted, &t.id),
+            paint.paint(Tone::Muted, &when(t.started)),
+            paint.paint(tone, &format!("{status:<16}"))
+        );
     }
     ExitCode::SUCCESS
 }
@@ -98,7 +105,7 @@ fn run_undo(
         Target::Search(words) => search(&undoable, words)?,
     };
     if chosen.is_empty() {
-        println!("Nothing to undo.");
+        crate::ui::info("Nothing to undo.");
         return Ok(ExitCode::SUCCESS);
     }
     let mut ids: Vec<String> = chosen.iter().map(|t| t.id.clone()).collect();
@@ -138,7 +145,7 @@ fn run_undo(
 
     print!("{}", preview(&plan, &chosen));
     if plan.actions.iter().all(|a| a.restores.is_empty()) {
-        println!("There is nothing to put back.");
+        crate::ui::info("There is nothing to put back.");
         return Ok(ExitCode::SUCCESS);
     }
     if dry_run {
@@ -165,7 +172,9 @@ fn run_undo(
     let request = format!("undo {}", ids.join(" "));
     match apply_undo(j, ex, &plan, &request, skip_drifted).map_err(err)? {
         RunOutcome::Completed { tx } => {
-            println!("Undone. This undo is {tx}; `sancho redo` reverses it.");
+            crate::ui::done(&format!(
+                "Undone. This undo is {tx}; `sancho redo` reverses it."
+            ));
             Ok(ExitCode::SUCCESS)
         }
         RunOutcome::Failed { tx, step, exit } => {
@@ -219,32 +228,46 @@ fn search<'a>(txs: &'a [Transaction], words: &str) -> Result<Vec<&'a Transaction
 }
 
 fn preview(plan: &UndoPlan, chosen: &[&Transaction]) -> String {
+    let paint = stdout_painter();
     let mut out = String::new();
     let names: Vec<String> = chosen
         .iter()
         .map(|t| format!("\"{}\" ({})", t.request, t.id))
         .collect();
-    out.push_str(&format!("Undo {}:\n\n", names.join(", ")));
+    out.push_str(&format!(
+        "{}\n\n",
+        paint.paint(Tone::Title, &format!("Undo {}:", names.join(", ")))
+    ));
     let mut n = 0;
     for a in &plan.actions {
         if let Some(d) = &a.drift {
             out.push_str(&format!(
-                "  ! {} changed since: expected {}, found {}\n",
-                a.target, d.expected, d.found
+                "  {}\n",
+                paint.paint(
+                    Tone::Warn,
+                    &format!(
+                        "! {} changed since: expected {}, found {}",
+                        a.target, d.expected, d.found
+                    )
+                )
             ));
         }
         for r in &a.restores {
             n += 1;
             let sudo = if r.invocation.root { "sudo " } else { "" };
             out.push_str(&format!(
-                "  {n}. {}\n     $ {sudo}{}\n",
+                "  {n}. {}\n     {} {}\n",
                 r.explanation,
-                shell_words(&r.invocation.argv)
+                paint.paint(Tone::Muted, "$"),
+                paint.paint(
+                    Tone::Command,
+                    &format!("{sudo}{}", shell_words(&r.invocation.argv))
+                )
             ));
         }
     }
     if !plan.cannot.is_empty() {
-        out.push_str("\nCan't undo:\n");
+        out.push_str(&format!("\n{}\n", paint.paint(Tone::Bad, "Can't undo:")));
         for c in &plan.cannot {
             out.push_str(&format!("  - {c}\n"));
         }
@@ -262,6 +285,7 @@ fn choose(question: &str, options: &[String]) -> Result<Option<usize>, String> {
     ask::choose(
         &mut io::stdin().lock(),
         &mut io::stdout(),
+        sancho_core::style::stdout_painter().as_ref(),
         question,
         options,
     )
@@ -275,13 +299,14 @@ fn confirm() -> Result<bool, String> {
     ask::confirm(
         &mut io::stdin().lock(),
         &mut io::stdout(),
+        sancho_core::style::stdout_painter().as_ref(),
         sancho_core::plan::Confirmation::YesNo,
     )
     .map_err(|e| e.to_string())
 }
 
 fn cancelled() -> Result<ExitCode, String> {
-    println!("Cancelled; nothing was changed.");
+    crate::ui::info("Cancelled; nothing was changed.");
     Ok(ExitCode::SUCCESS)
 }
 

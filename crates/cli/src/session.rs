@@ -7,6 +7,7 @@ use std::io::{self, BufRead, IsTerminal};
 use std::path::Path;
 use std::process::ExitCode;
 
+use sancho_core::style::{Paint, Tone};
 use sancho_core::Library;
 
 use crate::history::{self, Target};
@@ -96,14 +97,19 @@ pub fn route(line: &str) -> Line {
 /// Ctrl-R) on a terminal, plain stdin otherwise. History is never written
 /// to disk: it would leave a file behind and keep your requests.
 enum Input {
-    Editor(Box<rustyline::DefaultEditor>),
+    Editor(Box<rustyline::Editor<PromptColor, rustyline::history::DefaultHistory>>),
     Plain,
 }
 
 impl Input {
     fn new(tty: bool) -> Input {
-        match tty.then(rustyline::DefaultEditor::new) {
-            Some(Ok(editor)) => Input::Editor(Box::new(editor)),
+        match tty.then(rustyline::Editor::new) {
+            Some(Ok(mut editor)) => {
+                editor.set_helper(Some(PromptColor(
+                    sancho_core::style::stdout_painter().styled(),
+                )));
+                Input::Editor(Box::new(editor))
+            }
             _ => Input::Plain,
         }
     }
@@ -114,7 +120,7 @@ impl Input {
         match self {
             Input::Editor(editor) => loop {
                 println!();
-                match editor.readline("sancho> ") {
+                match editor.readline("you › ") {
                     Ok(line) => {
                         if !line.trim().is_empty() {
                             let _ = editor.add_history_entry(line.as_str());
@@ -137,6 +143,36 @@ impl Input {
     }
 }
 
+/// Colours the prompt. Done through rustyline's highlighter so the escape
+/// codes don't count towards the cursor position.
+struct PromptColor(bool);
+
+impl rustyline::completion::Completer for PromptColor {
+    type Candidate = String;
+}
+
+impl rustyline::hint::Hinter for PromptColor {
+    type Hint = String;
+}
+
+impl rustyline::validate::Validator for PromptColor {}
+
+impl rustyline::Helper for PromptColor {}
+
+impl rustyline::highlight::Highlighter for PromptColor {
+    fn highlight_prompt<'b, 's: 'b, 'p: 'b>(
+        &'s self,
+        prompt: &'p str,
+        _default: bool,
+    ) -> std::borrow::Cow<'b, str> {
+        if self.0 {
+            std::borrow::Cow::Owned(sancho_core::style::Ansi.paint(Tone::Accent, prompt))
+        } else {
+            std::borrow::Cow::Borrowed(prompt)
+        }
+    }
+}
+
 const HELP: &str = "\
 Tell me what you want done, in plain words. For example:
   update my system              install vlc and gimp
@@ -152,15 +188,41 @@ Also:                 show my system · what have you learned · forget 3 · exi
 Up and down arrows recall earlier lines. Ctrl-C clears the line, Ctrl-D leaves.
 Nothing changes without your confirmation, and every change can be listed and undone.";
 
+/// The help text, with its section labels highlighted on a terminal.
+fn print_help() {
+    let paint = sancho_core::style::stdout_painter();
+    for line in HELP.lines() {
+        match line.split_once(':') {
+            Some((label, rest)) if !label.starts_with(' ') && !rest.is_empty() => {
+                println!("{}{rest}", paint.paint(Tone::Title, &format!("{label}:")))
+            }
+            _ => println!("{line}"),
+        }
+    }
+}
+
 pub fn run(lib: &Library, fixture: Option<&Path>, dry_run: bool) -> ExitCode {
     let tty = io::stdin().is_terminal();
     if tty {
+        let paint = sancho_core::style::stdout_painter();
         println!(
-            "sancho {} — tell me what you want done. Type \"help\" for examples, \"exit\" to leave.",
-            env!("CARGO_PKG_VERSION")
+            "{} {}",
+            paint.paint(Tone::Accent, "sancho"),
+            paint.paint(Tone::Muted, env!("CARGO_PKG_VERSION"))
+        );
+        println!("Tell me what you want done, in plain words.");
+        println!(
+            "{}",
+            paint.paint(
+                Tone::Muted,
+                "\"help\" for examples · \"exit\" to leave · ↑ for earlier lines"
+            )
         );
         if dry_run || fixture.is_some() {
-            println!("Practice mode: plans are shown but never run.");
+            println!(
+                "{}",
+                paint.paint(Tone::Warn, "Practice mode: plans are shown but never run.")
+            );
         }
     }
     let dry_run = dry_run || fixture.is_some();
@@ -172,7 +234,7 @@ pub fn run(lib: &Library, fixture: Option<&Path>, dry_run: bool) -> ExitCode {
         let _ = match route(&line) {
             Line::Exit => break,
             Line::Help => {
-                println!("{HELP}");
+                print_help();
                 ExitCode::SUCCESS
             }
             Line::History => history::history(),
@@ -184,7 +246,7 @@ pub fn run(lib: &Library, fixture: Option<&Path>, dry_run: bool) -> ExitCode {
                     UndoWhat::Since(when) => match history::parse_since(&when.replace(' ', "")) {
                         Ok(secs) => Target::Since(secs),
                         Err(e) => {
-                            eprintln!("sancho: {e}");
+                            crate::ui::fail(&e.to_string());
                             continue;
                         }
                     },

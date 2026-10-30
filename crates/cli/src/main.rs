@@ -4,6 +4,7 @@ mod ask;
 mod history;
 mod learned;
 mod session;
+mod ui;
 
 use std::io::{self, IsTerminal};
 use std::path::{Path, PathBuf};
@@ -153,7 +154,7 @@ fn main() -> ExitCode {
                 (_, Some(s)) => match history::parse_since(&s) {
                     Ok(secs) => history::Target::Since(secs),
                     Err(e) => {
-                        eprintln!("sancho: {e}");
+                        ui::fail(&e.to_string());
                         return ExitCode::FAILURE;
                     }
                 },
@@ -191,10 +192,10 @@ const NEEDS_ANSWER: u8 = 2;
 /// The recipe library, or the reason it couldn't be loaded.
 fn load_library() -> Result<Library, ExitCode> {
     Library::load(&data_dir()).map_err(|e| {
-        eprintln!(
-            "sancho: the recipe library failed to load:\n{}",
+        ui::fail(&format!(
+            "the recipe library failed to load:\n{}",
             format_errors(&e)
-        );
+        ));
         ExitCode::FAILURE
     })
 }
@@ -225,29 +226,30 @@ fn run_request(lib: &Library, fixture: Option<&Path>, dry_run: bool, request: &s
                 format!("Fix a problem with \"{what}\""),
             ];
             if !io::stdin().is_terminal() {
-                println!("What kind of help?");
-                for (i, o) in options.iter().enumerate() {
-                    println!("  {}) {o}", i + 1);
-                }
-                eprintln!(
-                    "sancho: this needs an answer; run it in a terminal or be more specific."
+                let _ = ask::write_options(
+                    &mut io::stdout(),
+                    sancho_core::style::stdout_painter().as_ref(),
+                    "What kind of help?",
+                    &options,
                 );
+                ui::fail("this needs an answer; run it in a terminal or be more specific.");
                 return ExitCode::from(NEEDS_ANSWER);
             }
             match ask::choose(
                 &mut io::stdin().lock(),
                 &mut io::stdout(),
+                sancho_core::style::stdout_painter().as_ref(),
                 "What kind of help?",
                 &options,
             ) {
                 Ok(Some(0)) => return explain_with(lib, sys.as_ref(), &what),
                 Ok(Some(1)) => text = what,
                 Ok(Some(_)) => {
-                    println!("Fixing problems isn't available yet. Try describing what you want done, e.g. \"restart wifi\".");
+                    ui::info("Fixing problems isn't available yet. Try describing what you want done, e.g. \"restart wifi\".");
                     return ExitCode::SUCCESS;
                 }
                 _ => {
-                    println!("Cancelled; nothing was changed.");
+                    ui::info("Cancelled; nothing was changed.");
                     return ExitCode::SUCCESS;
                 }
             }
@@ -260,7 +262,7 @@ fn run_request(lib: &Library, fixture: Option<&Path>, dry_run: bool, request: &s
     let mut answers = Answers::default();
     // Answers to earlier questions; without a store, sancho just asks.
     let mut store = learned::open()
-        .map_err(|e| eprintln!("sancho: {e}; answers won't be remembered"))
+        .map_err(|e| ui::warn(&format!("{e}; answers won't be remembered")))
         .ok();
     let phrase = matcher.phrase(&text);
     let mut used_learned: Vec<(u32, String)> = Vec::new();
@@ -277,7 +279,7 @@ fn run_request(lib: &Library, fixture: Option<&Path>, dry_run: bool, request: &s
                         match sancho_plan::build(lib, &recipe, &values, &profile, sys.as_ref()) {
                             Ok(p) => p,
                             Err(e) => {
-                                eprintln!("sancho: can't plan this: {e}");
+                                ui::fail(&format!("can't plan this: {e}"));
                                 return ExitCode::FAILURE;
                             }
                         };
@@ -286,21 +288,33 @@ fn run_request(lib: &Library, fixture: Option<&Path>, dry_run: bool, request: &s
                         plan.notes
                             .insert(0, format!("Read \"{typed}\" as \"{read}\"."));
                     }
-                    print!("{}", sancho_plan::render::plan(&plan));
+                    print!(
+                        "{}",
+                        sancho_plan::render::plan_with(
+                            &plan,
+                            sancho_core::style::stdout_painter().as_ref()
+                        )
+                    );
                     if dry_run {
-                        println!("Dry run: nothing was changed.");
+                        ui::info("Dry run: nothing was changed.");
                         return ExitCode::SUCCESS;
                     }
                     if !interactive && plan.confirmation() != sancho_core::plan::Confirmation::None
                     {
-                        eprintln!("sancho: confirmation needs a terminal; nothing was changed.");
+                        ui::fail("confirmation needs a terminal; nothing was changed.");
                         return ExitCode::from(NEEDS_ANSWER);
                     }
                     let mut stdin = io::stdin().lock();
-                    return match ask::confirm(&mut stdin, &mut io::stdout(), plan.confirmation()) {
+                    let paint = sancho_core::style::stdout_painter();
+                    return match ask::confirm(
+                        &mut stdin,
+                        &mut io::stdout(),
+                        paint.as_ref(),
+                        plan.confirmation(),
+                    ) {
                         Ok(true) => run_plan(&plan, &text),
                         _ => {
-                            println!("Cancelled; nothing was changed.");
+                            ui::info("Cancelled; nothing was changed.");
                             ExitCode::SUCCESS
                         }
                     };
@@ -374,24 +388,32 @@ fn run_request(lib: &Library, fixture: Option<&Path>, dry_run: bool, request: &s
                     (format!("Which {slot}?"), labels, pick)
                 }
                 Interpretation::NotFound { reason, .. } => {
-                    eprintln!("sancho: {reason}");
+                    ui::fail(&reason);
                     return ExitCode::FAILURE;
                 }
                 Interpretation::Unsupported { reason } => {
-                    eprintln!("sancho: {reason}");
+                    ui::fail(&reason);
                     return ExitCode::FAILURE;
                 }
             };
         if !interactive {
-            println!("{question}");
-            for (i, l) in labels.iter().enumerate() {
-                println!("  {}) {l}", i + 1);
-            }
-            eprintln!("sancho: this needs an answer; run it in a terminal or be more specific.");
+            let _ = ask::write_options(
+                &mut io::stdout(),
+                sancho_core::style::stdout_painter().as_ref(),
+                &question,
+                &labels,
+            );
+            ui::fail("this needs an answer; run it in a terminal or be more specific.");
             return ExitCode::from(NEEDS_ANSWER);
         }
         let mut stdin = io::stdin().lock();
-        match ask::choose(&mut stdin, &mut io::stdout(), &question, &labels) {
+        match ask::choose(
+            &mut stdin,
+            &mut io::stdout(),
+            sancho_core::style::stdout_painter().as_ref(),
+            &question,
+            &labels,
+        ) {
             Ok(Some(i)) => {
                 if let (Some(s), Some(learned)) = (store.as_mut(), pick.learning(i, &phrase)) {
                     let what = sancho_learn::Item {
@@ -401,16 +423,16 @@ fn run_request(lib: &Library, fixture: Option<&Path>, dry_run: bool, request: &s
                     }
                     .describe();
                     match s.learn(learned) {
-                        Ok(id) => {
-                            println!("Remembered: {what} (forget it: sancho learned rm {id})")
-                        }
-                        Err(e) => eprintln!("sancho: couldn't remember that answer: {e}"),
+                        Ok(id) => ui::info(&format!(
+                            "Remembered: {what} (forget it: sancho learned rm {id})"
+                        )),
+                        Err(e) => ui::warn(&format!("couldn't remember that answer: {e}")),
                     }
                 }
                 pick.apply(i, &mut answers)
             }
             _ => {
-                println!("Cancelled; nothing was changed.");
+                ui::info("Cancelled; nothing was changed.");
                 return ExitCode::SUCCESS;
             }
         }
@@ -483,7 +505,10 @@ fn explain(command: &str) -> ExitCode {
 /// Explains without running anything.
 fn explain_with(lib: &Library, sys: &dyn System, command: &str) -> ExitCode {
     let e = sancho_explain::explain(lib, sys, command);
-    print!("{}", sancho_explain::render::explanation(&e));
+    print!(
+        "{}",
+        sancho_explain::render::explanation_with(&e, sancho_core::style::stdout_painter().as_ref())
+    );
     ExitCode::SUCCESS
 }
 
@@ -494,32 +519,40 @@ fn run_plan(plan: &sancho_core::Plan, request: &str) -> ExitCode {
     let journal = match history::journal() {
         Ok(j) => j,
         Err(e) => {
-            eprintln!("sancho: {e}");
+            ui::fail(&e.to_string());
             return ExitCode::FAILURE;
         }
     };
     let mut ex = sancho_exec::SudoExecutor;
     let total = plan.steps.len();
-    let mut progress = |i: usize| println!("[{}/{total}] {}", i + 1, plan.steps[i].explanation);
+    let paint = sancho_core::style::stdout_painter();
+    let mut progress = |i: usize| {
+        let counter = format!("[{}/{total}]", i + 1);
+        println!(
+            "{} {}",
+            paint.paint(sancho_core::style::Tone::Accent, &counter),
+            paint.paint(sancho_core::style::Tone::Title, &plan.steps[i].explanation)
+        )
+    };
     match execute(&journal, &mut ex, plan, request, &mut progress) {
         Ok(RunOutcome::Completed { tx }) => {
             if plan.steps.iter().any(|s| !s.read_only) {
-                println!("Done. `sancho undo` reverses this ({tx}).");
+                ui::done(&format!("Done. `sancho undo` reverses this ({tx})."));
             }
             ExitCode::SUCCESS
         }
         Ok(RunOutcome::Failed { tx, step, exit }) => {
-            println!(
+            ui::fail(&format!(
                 "Step {} failed (exit {exit}); later steps did not run.",
                 step + 1
-            );
+            ));
             if step == 0 {
                 return ExitCode::FAILURE;
             }
             let undo = match plan_undo(&journal, &mut ex, std::slice::from_ref(&tx), None) {
                 Ok(u) => u,
                 Err(e) => {
-                    eprintln!("sancho: {e}");
+                    ui::fail(&e.to_string());
                     return ExitCode::FAILURE;
                 }
             };
@@ -531,24 +564,26 @@ fn run_plan(plan: &sancho_core::Plan, request: &str) -> ExitCode {
             let yes = ask::confirm(
                 &mut io::stdin().lock(),
                 &mut io::sink(),
+                sancho_core::style::stdout_painter().as_ref(),
                 sancho_core::plan::Confirmation::YesNo,
             )
             .unwrap_or(false);
             if yes {
                 match apply_undo(&journal, &mut ex, &undo, &format!("roll back {tx}"), false) {
-                    Ok(RunOutcome::Completed { .. }) => println!("Rolled back."),
-                    Ok(RunOutcome::Failed { step, .. }) => {
-                        println!("Rollback step {} failed; see `sancho history`.", step + 1)
-                    }
-                    Err(e) => eprintln!("sancho: {e}"),
+                    Ok(RunOutcome::Completed { .. }) => ui::done("Rolled back."),
+                    Ok(RunOutcome::Failed { step, .. }) => ui::fail(&format!(
+                        "Rollback step {} failed; see `sancho history`.",
+                        step + 1
+                    )),
+                    Err(e) => ui::fail(&e.to_string()),
                 }
             } else {
-                println!("Left as is; `sancho undo` can roll it back later.");
+                ui::info("Left as is; `sancho undo` can roll it back later.");
             }
             ExitCode::FAILURE
         }
         Err(e) => {
-            eprintln!("sancho: {e}");
+            ui::fail(&e.to_string());
             ExitCode::FAILURE
         }
     }
@@ -570,7 +605,15 @@ fn data_dir() -> PathBuf {
 fn print_profile(sys: &dyn System) {
     let profile = detect(sys);
     for (key, value) in profile.iter() {
-        println!("{:<14}{value}", key.name());
+        let paint = sancho_core::style::stdout_painter();
+        println!(
+            "{}{}",
+            paint.paint(
+                sancho_core::style::Tone::Muted,
+                &format!("{:<14}", key.name())
+            ),
+            paint.paint(sancho_core::style::Tone::Title, value)
+        );
     }
 }
 

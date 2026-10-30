@@ -1,10 +1,11 @@
 $ sancho restart my wifi   # system: arch_iwd
 
-[verified recipe · network.restart_wifi v1] Restart Wi-Fi (NetworkManager: radio off and on; iwd: restart the daemon)
+Restart Wi-Fi (NetworkManager: radio off and on; iwd: restart the daemon)
+verified recipe · network.restart_wifi v1
 Risk: medium — you will be asked to confirm
 
   1. Restart iwd, which manages Wi-Fi
      $ sudo systemctl restart iwd.service
-     nothing to undo
+     · nothing to undo
 
 Undo: nothing to undo

@@ -1,10 +1,11 @@
 $ sancho stop bluetooth   # system: eval_desktop
 
-[verified recipe · service.stop v1] Stop a running systemd service (it may start again at boot)
+Stop a running systemd service (it may start again at boot)
+verified recipe · service.stop v1
 Risk: medium — you will be asked to confirm
 
   1. Stop bluetooth.service now
      $ sudo systemctl stop bluetooth.service
-     can be undone
+     ↺ can be undone
 
 Undo: every step can be undone with `sancho undo`

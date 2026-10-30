@@ -22,10 +22,19 @@ pub fn list() -> ExitCode {
         Err(e) => return fail(&e),
     };
     if store.items().is_empty() {
-        println!("Nothing learned yet. sancho remembers your answers when it has to ask.");
+        crate::ui::info("Nothing learned yet. sancho remembers your answers when it has to ask.");
     }
     for i in store.items() {
-        println!("{:>4}  {}  (used {} times)", i.id, i.describe(), i.uses);
+        let paint = sancho_core::style::stdout_painter();
+        println!(
+            "{}  {}  {}",
+            paint.paint(sancho_core::style::Tone::Accent, &format!("{:>4}", i.id)),
+            i.describe(),
+            paint.paint(
+                sancho_core::style::Tone::Muted,
+                &format!("(used {} times)", i.uses)
+            )
+        );
     }
     ExitCode::SUCCESS
 }
@@ -37,7 +46,7 @@ pub fn remove(id: u32) -> ExitCode {
     };
     match store.remove(id) {
         Ok(true) => {
-            println!("Forgot {id}.");
+            crate::ui::done(&format!("Forgot {id}."));
             ExitCode::SUCCESS
         }
         Ok(false) => fail(&format!(
@@ -86,16 +95,20 @@ pub fn export(id: u32, output: Option<PathBuf>) -> ExitCode {
     let ok = ask::confirm(
         &mut io::stdin().lock(),
         &mut io::stdout(),
+        sancho_core::style::stdout_painter().as_ref(),
         sancho_core::plan::Confirmation::YesNo,
     )
     .unwrap_or(false);
     if !ok {
-        println!("Cancelled; nothing was written.");
+        crate::ui::info("Cancelled; nothing was written.");
         return ExitCode::SUCCESS;
     }
     match std::fs::write(&path, &scrubbed.text) {
         Ok(()) => {
-            println!("Wrote {}. Nothing was sent anywhere.", path.display());
+            crate::ui::done(&format!(
+                "Wrote {}. Nothing was sent anywhere.",
+                path.display()
+            ));
             ExitCode::SUCCESS
         }
         Err(e) => fail(&format!("{}: {e}", path.display())),
