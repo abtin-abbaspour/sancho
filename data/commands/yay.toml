@@ -1,0 +1,16 @@
+command = "yay"
+summary = "AUR helper: builds and installs packages from the AUR, and wraps pacman"
+risk = "high"
+
+flags = [
+  { names = ["-S", "--sync"], help = "Install or upgrade packages (repositories and AUR)" },
+  { names = ["-y", "--refresh"], help = "Download fresh package databases first" },
+  { names = ["-u", "--sysupgrade"], help = "Upgrade installed packages that have newer versions" },
+  { names = ["-a", "--aur"], help = "Only act on AUR packages" },
+  { names = ["-R", "--remove"], help = "Remove installed packages" },
+  { names = ["-Q", "--query"], help = "List or query installed packages (read-only)" },
+  { names = ["-s", "--search"], help = "Search packages" },
+  { names = ["-c", "--clean"], help = "Remove unneeded dependencies" },
+  { names = ["--devel"], help = "Also check development (-git) packages for updates" },
+  { names = ["--noconfirm"], help = "Answer every question with the default, without asking", risk = "high" },
+]

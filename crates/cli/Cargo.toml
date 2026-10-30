@@ -16,6 +16,7 @@ clap = { version = "4.5", features = ["derive"] }
 libc = "0.2"
 sancho-core.workspace = true
 sancho-exec.workspace = true
+sancho-explain.workspace = true
 sancho-journal.workspace = true
 sancho-match.workspace = true
 sancho-plan.workspace = true

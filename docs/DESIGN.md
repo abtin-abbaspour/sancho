@@ -323,14 +323,24 @@ nothing matches). Pronouns resolve to the current session first.
 
 ## 8. Explain
 
-`sancho explain "<command>"` and NL forms ("what does X do"):
-- X is a command string → parse with tree-sitter-bash, explain each command/flag from
-  primitive schemas, show risk. Deterministic, no model. Useful for commands copied from
-  forums/wikis.
-- X is a tool/concept ("what does pacman do") → the system's own man pages (`man -f` for a
-  one-line answer, the page itself for more). Nothing is bundled or downloaded.
+`sancho explain "<command>"` and NL forms ("explain X", "what does X do", "what is X" —
+routed to explain only when X starts with a program sancho has notes or a man page for):
+
+- The line is parsed with tree-sitter-bash. Each simple command is explained from
+  **command notes** (`data/commands/<program>.toml`: summary, risk, subcommands, flags
+  with help, value-taking and risk, dangerous arguments, and `wraps`/`as_root` for
+  wrappers such as `sudo`). Deterministic, no model.
+- Flags are looked up, never guessed: exact name first (covers `ip -json`), then
+  `--name=value`, then a short cluster (`-Syu`, `-rk2`) only if every letter is in the
+  notes. Anything else is shown as `??` with a pointer to `man <program>`, and the overall
+  risk becomes "unknown". Unparseable input is marked incomplete.
+- Shell-level notes: piping into an interpreter (`curl … | sh`) is high risk; redirects
+  that overwrite or append (high for `/etc`, `/dev`, `/boot`, `/usr`); `$(...)` runs first
+  and is explained as a nested command; environment assignments; control flow.
+- Programs without notes get their `man -f` one-line summary; their options are unknown.
+- Every flag used by every primitive must be in the notes (a test enforces it).
 - Open-ended tutoring → bring-your-own-model (post-MVP).
-- "help me with X" is ambiguous → ask: explain, fix, or do?
+- "help me with X" asks: explain, do, or fix (fix is post-MVP).
 
 ## 9. Diagnose-and-fix recipes (post-MVP, design now)
 

@@ -1,0 +1,8 @@
+command = "echo"
+summary = "Prints its arguments"
+risk = "low"
+
+flags = [
+  { names = ["-n"], help = "No newline at the end" },
+  { names = ["-e"], help = "Interpret backslash escapes" },
+]

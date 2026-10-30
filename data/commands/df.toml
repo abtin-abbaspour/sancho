@@ -1,0 +1,14 @@
+command = "df"
+summary = "Shows used and free space on mounted filesystems (read-only)"
+risk = "low"
+
+flags = [
+  { names = ["-h", "--human-readable"], help = "Sizes like 1.5G instead of blocks" },
+  { names = ["-H", "--si"], help = "Like -h but in powers of 1000" },
+  { names = ["-x", "--exclude-type"], value = true, help = "Leave out filesystems of this type" },
+  { names = ["-t", "--type"], value = true, help = "Only filesystems of this type" },
+  { names = ["-T", "--print-type"], help = "Show each filesystem's type" },
+  { names = ["-i", "--inodes"], help = "Show inode use instead of space" },
+  { names = ["-a", "--all"], help = "Include pseudo filesystems" },
+  { names = ["-l", "--local"], help = "Only local filesystems" },
+]

@@ -1,0 +1,15 @@
+command = "ls"
+summary = "Lists files (read-only)"
+risk = "low"
+
+flags = [
+  { names = ["-l"], help = "Long format: permissions, owner, size, date" },
+  { names = ["-a", "--all"], help = "Include hidden files" },
+  { names = ["-A", "--almost-all"], help = "Include hidden files except . and .." },
+  { names = ["-h", "--human-readable"], help = "Sizes like 1.5K" },
+  { names = ["-t"], help = "Sort by modification time" },
+  { names = ["-r", "--reverse"], help = "Reverse the sort order" },
+  { names = ["-R", "--recursive"], help = "List directories inside directories" },
+  { names = ["-1"], help = "One name per line" },
+  { names = ["-d", "--directory"], help = "List directories themselves, not their contents" },
+]

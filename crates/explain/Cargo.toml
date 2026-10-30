@@ -6,3 +6,6 @@ publish.workspace = true
 license.workspace = true
 
 [dependencies]
+tree-sitter = "0.27"
+tree-sitter-bash = "0.25"
+sancho-core.workspace = true

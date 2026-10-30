@@ -1,0 +1,9 @@
+command = "gpasswd"
+summary = "Manages group membership (shadow-utils)"
+risk = "medium"
+
+flags = [
+  { names = ["-a", "--add"], value = true, help = "Add this user to the group" },
+  { names = ["-d", "--delete"], value = true, help = "Remove this user from the group" },
+  { names = ["-M", "--members"], value = true, help = "Set the full member list (replaces it)", risk = "high" },
+]

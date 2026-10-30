@@ -1,0 +1,9 @@
+command = "mkdir"
+summary = "Creates directories"
+risk = "low"
+
+flags = [
+  { names = ["-p", "--parents"], help = "Create missing parent directories; no error if it exists" },
+  { names = ["-m", "--mode"], value = true, help = "Permissions for the new directory" },
+  { names = ["-v", "--verbose"], help = "Print each created directory" },
+]

@@ -1,5 +1,6 @@
 //! Core types: Recipe, Primitive, Slot, Effect, Plan, Transaction.
 
+pub mod command_doc;
 pub mod effect;
 pub mod load;
 pub mod pattern;

@@ -1,0 +1,13 @@
+command = "rm"
+summary = "Deletes files permanently (no trash)"
+risk = "high"
+dangerous_args = ["/", "/*", "~", "~/", "~/*", "$HOME", "$HOME/", ".", "..", "*"]
+
+flags = [
+  { names = ["-r", "-R", "--recursive"], help = "Delete directories and everything in them" },
+  { names = ["-f", "--force"], help = "Never ask, and ignore missing files" },
+  { names = ["-i"], help = "Ask before each deletion" },
+  { names = ["-v", "--verbose"], help = "Print each deleted file" },
+  { names = ["-d", "--dir"], help = "Delete empty directories" },
+  { names = ["--no-preserve-root"], help = "Allow deleting / itself", risk = "high" },
+]

@@ -1,0 +1,22 @@
+command = "ip"
+summary = "Shows and changes network interfaces, addresses and routes (iproute2)"
+risk = "medium"
+
+subcommands = [
+  { words = ["link", "show"], help = "List network interfaces (read-only)", risk = "low" },
+  { words = ["link", "set"], help = "Change an interface (up, down, name, ...)" },
+  { words = ["link"], help = "Network interfaces; lists them when nothing follows", risk = "low" },
+  { words = ["addr", "show"], help = "List addresses (read-only)", risk = "low" },
+  { words = ["address", "show"], help = "List addresses (read-only)", risk = "low" },
+  { words = ["addr"], help = "IP addresses; lists them when nothing follows", risk = "low" },
+  { words = ["address"], help = "IP addresses; lists them when nothing follows", risk = "low" },
+  { words = ["route"], help = "Routing table; lists it when nothing follows", risk = "low" },
+]
+flags = [
+  { names = ["-j", "-json"], help = "Print JSON" },
+  { names = ["-br", "-brief"], help = "Print one short line per item" },
+  { names = ["-c", "-color"], help = "Colour the output" },
+  { names = ["-4"], help = "IPv4 only" },
+  { names = ["-6"], help = "IPv6 only" },
+  { names = ["-s", "-stats"], help = "Include statistics" },
+]

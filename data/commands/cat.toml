@@ -1,0 +1,8 @@
+command = "cat"
+summary = "Prints files (read-only)"
+risk = "low"
+
+flags = [
+  { names = ["-n", "--number"], help = "Number the lines" },
+  { names = ["-A", "--show-all"], help = "Show invisible characters" },
+]

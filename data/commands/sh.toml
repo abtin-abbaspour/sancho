@@ -1,0 +1,10 @@
+command = "sh"
+summary = "A shell: runs commands from a script, from -c, or from what is piped into it"
+risk = "high"
+
+flags = [
+  { names = ["-c"], value = true, help = "Run this text as commands" },
+  { names = ["-e"], help = "Stop at the first failing command" },
+  { names = ["-x"], help = "Print each command before running it" },
+  { names = ["-s"], help = "Read commands from what is piped in" },
+]

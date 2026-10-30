@@ -1,0 +1,15 @@
+command = "usermod"
+summary = "Changes a user account (shadow-utils)"
+risk = "high"
+
+flags = [
+  { names = ["-a", "--append"], help = "With -G: add to the groups instead of replacing the user's groups" },
+  { names = ["-G", "--groups"], value = true, help = "Supplementary groups (comma-separated); without -a this REPLACES all of them", risk = "high" },
+  { names = ["-g", "--gid"], value = true, help = "Change the user's primary group" },
+  { names = ["-s", "--shell"], value = true, help = "Change the login shell" },
+  { names = ["-d", "--home"], value = true, help = "Change the home directory path" },
+  { names = ["-m", "--move-home"], help = "With -d: move the home directory's contents" },
+  { names = ["-L", "--lock"], help = "Lock the account's password", risk = "high" },
+  { names = ["-U", "--unlock"], help = "Unlock the account's password" },
+  { names = ["-l", "--login"], value = true, help = "Rename the account", risk = "high" },
+]

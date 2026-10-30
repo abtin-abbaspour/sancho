@@ -13,7 +13,7 @@ use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 use std::time::{Duration, Instant};
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Query {
     /// All devices with their udev properties.
     UdevDb,
@@ -23,32 +23,40 @@ pub enum Query {
     InstalledPackages,
     /// Packages in the sync databases: `repo name version [installed]`.
     SyncPackages,
+    /// One-line man page summaries for a program (`man -f <name>`).
+    ManSummary(String),
 }
 
 impl Query {
-    pub const ALL: [Query; 4] = [
-        Query::UdevDb,
-        Query::UnitFiles,
-        Query::InstalledPackages,
-        Query::SyncPackages,
-    ];
-
-    pub fn argv(self) -> &'static [&'static str] {
-        match self {
+    pub fn argv(&self) -> Vec<String> {
+        let fixed: &[&str] = match self {
             Query::UdevDb => &["udevadm", "info", "--export-db"],
             Query::UnitFiles => &["systemctl", "list-unit-files", "--no-legend", "--no-pager"],
             Query::InstalledPackages => &["pacman", "-Q"],
             Query::SyncPackages => &["pacman", "-Sl"],
-        }
+            Query::ManSummary(name) => {
+                return vec!["man".into(), "-f".into(), "--".into(), name.clone()]
+            }
+        };
+        fixed.iter().map(|s| s.to_string()).collect()
     }
 
     /// File name of the captured output in a fixture's `queries/` directory.
-    pub fn fixture_name(self) -> &'static str {
+    pub fn fixture_name(&self) -> String {
         match self {
-            Query::UdevDb => "udev-db.txt",
-            Query::UnitFiles => "unit-files.txt",
-            Query::InstalledPackages => "installed-packages.txt",
-            Query::SyncPackages => "sync-packages.txt",
+            Query::UdevDb => "udev-db.txt".into(),
+            Query::UnitFiles => "unit-files.txt".into(),
+            Query::InstalledPackages => "installed-packages.txt".into(),
+            Query::SyncPackages => "sync-packages.txt".into(),
+            Query::ManSummary(name) => format!("man-f-{name}.txt"),
+        }
+    }
+
+    /// Arguments that come from outside (program names) must be plain tokens.
+    fn is_safe(&self) -> bool {
+        match self {
+            Query::ManSummary(name) => crate::value::safe_token(name, "._+-", 64),
+            _ => true,
         }
     }
 }
@@ -125,8 +133,11 @@ impl System for LiveSystem {
     }
 
     fn query(&self, q: Query) -> Option<String> {
+        if !q.is_safe() {
+            return None;
+        }
         let argv = q.argv();
-        let mut child = Command::new(argv[0])
+        let mut child = Command::new(&argv[0])
             .args(&argv[1..])
             // Stable, untranslated output for parsing.
             .env("LC_ALL", "C")
@@ -211,6 +222,9 @@ impl System for FixtureSystem {
     }
 
     fn query(&self, q: Query) -> Option<String> {
+        if !q.is_safe() {
+            return None;
+        }
         fs::read_to_string(self.dir.join("queries").join(q.fixture_name())).ok()
     }
 }

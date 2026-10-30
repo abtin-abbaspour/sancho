@@ -1,0 +1,16 @@
+command = "curl"
+summary = "Downloads (or uploads) data from URLs"
+risk = "medium"
+
+flags = [
+  { names = ["-f", "--fail"], help = "Fail silently on HTTP errors" },
+  { names = ["-s", "--silent"], help = "No progress meter or error messages" },
+  { names = ["-S", "--show-error"], help = "With -s: still show errors" },
+  { names = ["-L", "--location"], help = "Follow redirects" },
+  { names = ["-o", "--output"], value = true, help = "Save to this file" },
+  { names = ["-O", "--remote-name"], help = "Save under the URL's file name" },
+  { names = ["-k", "--insecure"], help = "Don't check the server's certificate", risk = "high" },
+  { names = ["-X", "--request"], value = true, help = "HTTP method to use" },
+  { names = ["-d", "--data"], value = true, help = "Send this data (POST)" },
+  { names = ["-H", "--header"], value = true, help = "Send this header" },
+]

@@ -1,0 +1,10 @@
+command = "lsusb"
+summary = "Lists USB devices (read-only)"
+risk = "low"
+
+flags = [
+  { names = ["-v", "--verbose"], help = "Show detailed descriptors" },
+  { names = ["-t", "--tree"], help = "Show devices as a tree of hubs and ports" },
+  { names = ["-d"], value = true, help = "Only devices with this vendor:product ID" },
+  { names = ["-s"], value = true, help = "Only devices on this bus:device number" },
+]

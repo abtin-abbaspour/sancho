@@ -1,0 +1,10 @@
+command = "mv"
+summary = "Moves or renames files"
+risk = "medium"
+
+flags = [
+  { names = ["-f", "--force"], help = "Replace destination files without asking" },
+  { names = ["-i", "--interactive"], help = "Ask before replacing files" },
+  { names = ["-n", "--no-clobber"], help = "Never replace existing files" },
+  { names = ["-v", "--verbose"], help = "Print each moved file" },
+]

@@ -1,0 +1,18 @@
+command = "snapper"
+summary = "Manages filesystem snapshots (btrfs)"
+risk = "low"
+
+subcommands = [
+  { words = ["create"], help = "Take a snapshot" },
+  { words = ["list"], help = "List snapshots (read-only)" },
+  { words = ["delete"], help = "Delete snapshots", risk = "high" },
+  { words = ["rollback"], help = "Make a snapshot the running system after reboot", risk = "high" },
+  { words = ["undochange"], help = "Revert file changes between two snapshots", risk = "high" },
+  { words = ["status"], help = "Show what changed between snapshots (read-only)" },
+]
+flags = [
+  { names = ["-c", "--config"], value = true, help = "Which snapper configuration (e.g. root)" },
+  { names = ["-d", "--description"], value = true, help = "With create: a description for the snapshot" },
+  { names = ["--cleanup-algorithm"], value = true, help = "With create: which cleanup policy may delete it later (number, timeline)" },
+  { names = ["-t", "--type"], value = true, help = "With create: single, pre or post" },
+]

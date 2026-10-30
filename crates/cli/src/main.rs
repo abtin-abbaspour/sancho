@@ -66,6 +66,15 @@ enum Command {
         #[arg(long, short = 'n')]
         dry_run: bool,
     },
+    /// Explain a command line, flag by flag, without running it.
+    ///
+    /// Quote it so your shell doesn't run parts of it:
+    /// sancho explain "curl -fsSL https://example.com/x.sh | sh"
+    Explain {
+        /// The command line.
+        #[arg(required = true, trailing_var_arg = true, allow_hyphen_values = true)]
+        command: Vec<String>,
+    },
     /// Undo the last undo.
     Redo {
         /// Show what would be redone and exit.
@@ -130,6 +139,7 @@ fn main() -> ExitCode {
             history::undo(target, &steps, dry_run)
         }
         Some(Command::Redo { dry_run }) => history::undo(history::Target::Redo, &[], dry_run),
+        Some(Command::Explain { command }) => explain(&command.join(" ")),
         None if cli.request.is_empty() => {
             let _ = Cli::command().print_help();
             ExitCode::SUCCESS
@@ -157,9 +167,50 @@ fn run_request(cli: &Cli) -> ExitCode {
         None => Box::new(LiveSystem),
     };
     let dry_run = cli.dry_run || cli.fixture.is_some();
+    let mut text = cli.request.join(" ");
+    let is_program = |w: &str| {
+        lib.commands.contains_key(w) || sancho_explain::man_summary(sys.as_ref(), w).is_some()
+    };
+    match sancho_explain::route(&text, is_program) {
+        sancho_explain::Route::Explain(what) => return explain_with(&lib, sys.as_ref(), &what),
+        sancho_explain::Route::HelpWith(what) => {
+            let options = vec![
+                format!("Explain: what is \"{what}\"?"),
+                format!("Do: \"{what}\""),
+                format!("Fix a problem with \"{what}\""),
+            ];
+            if !io::stdin().is_terminal() {
+                println!("What kind of help?");
+                for (i, o) in options.iter().enumerate() {
+                    println!("  {}) {o}", i + 1);
+                }
+                eprintln!(
+                    "sancho: this needs an answer; run it in a terminal or be more specific."
+                );
+                return ExitCode::from(NEEDS_ANSWER);
+            }
+            match ask::choose(
+                &mut io::stdin().lock(),
+                &mut io::stdout(),
+                "What kind of help?",
+                &options,
+            ) {
+                Ok(Some(0)) => return explain_with(&lib, sys.as_ref(), &what),
+                Ok(Some(1)) => text = what,
+                Ok(Some(_)) => {
+                    println!("Fixing problems isn't available yet. Try describing what you want done, e.g. \"restart wifi\".");
+                    return ExitCode::SUCCESS;
+                }
+                _ => {
+                    println!("Cancelled; nothing was changed.");
+                    return ExitCode::SUCCESS;
+                }
+            }
+        }
+        sancho_explain::Route::Do => {}
+    }
     let profile = detect(sys.as_ref());
     let matcher = Matcher::new(&lib);
-    let text = cli.request.join(" ");
     let interactive = io::stdin().is_terminal();
     let mut answers = Answers::default();
 
@@ -265,6 +316,26 @@ impl Pick {
             }
         }
     }
+}
+
+fn explain(command: &str) -> ExitCode {
+    match Library::load(&data_dir()) {
+        Ok(lib) => explain_with(&lib, &LiveSystem, command),
+        Err(e) => {
+            eprintln!(
+                "sancho: the recipe library failed to load:\n{}",
+                format_errors(&e)
+            );
+            ExitCode::FAILURE
+        }
+    }
+}
+
+/// Explains without running anything.
+fn explain_with(lib: &Library, sys: &dyn System, command: &str) -> ExitCode {
+    let e = sancho_explain::explain(lib, sys, command);
+    print!("{}", sancho_explain::render::explanation(&e));
+    ExitCode::SUCCESS
 }
 
 /// Runs a confirmed plan through the journal; offers rollback on failure.

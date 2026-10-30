@@ -1,0 +1,30 @@
+command = "pacman"
+summary = "Arch Linux package manager: installs, removes, upgrades and lists packages"
+risk = "medium"
+
+flags = [
+  { names = ["-S", "--sync"], help = "Install or upgrade packages from the repositories" },
+  { names = ["-y", "--refresh"], help = "Download fresh package databases first" },
+  { names = ["-u", "--sysupgrade"], help = "Upgrade every installed package that has a newer version", risk = "high" },
+  { names = ["-R", "--remove"], help = "Remove installed packages" },
+  { names = ["-s", "--recursive", "--search"], help = "With -R: also remove dependencies nothing else needs. With -S or -Q: search package names and descriptions" },
+  { names = ["-n", "--nosave"], help = "With -R: also delete the packages' backup configuration files" },
+  { names = ["-c", "--cascade", "--clean"], help = "With -R: also remove packages that depend on these. With -S: clean the package cache", risk = "high" },
+  { names = ["-Q", "--query"], help = "List or query installed packages (read-only)" },
+  { names = ["-i", "--info"], help = "Show detailed package information" },
+  { names = ["-l", "--list"], help = "With -Q: list the files a package installed" },
+  { names = ["-o", "--owns"], help = "With -Q: show which package owns a file" },
+  { names = ["-t", "--unrequired"], help = "With -Q: only packages nothing depends on" },
+  { names = ["-d", "--deps", "--nodeps"], help = "With -Q: only packages installed as dependencies. With -S, -R or -U: skip dependency checks (twice skips all checks)", risk = "high" },
+  { names = ["-q", "--quiet"], help = "Print less (names only)" },
+  { names = ["-m", "--foreign"], help = "With -Q: only packages not from a repository (e.g. AUR)" },
+  { names = ["-U", "--upgrade"], help = "Install packages from local files or URLs", risk = "high" },
+  { names = ["-F", "--files"], help = "Search which package contains a file (read-only)" },
+  { names = ["-p", "--print"], help = "Show what would be done without doing it" },
+  { names = ["--needed"], help = "Skip packages that are already up to date" },
+  { names = ["--asdeps"], help = "Mark the packages as installed as dependencies" },
+  { names = ["--asexplicit"], help = "Mark the packages as explicitly installed" },
+  { names = ["--noconfirm"], help = "Answer every question with the default, without asking", risk = "high" },
+  { names = ["--overwrite"], value = true, help = "Overwrite conflicting files matching this pattern", risk = "high" },
+  { names = ["--ignore"], value = true, help = "Don't upgrade this package (partial upgrades are unsupported on Arch)", risk = "high" },
+]

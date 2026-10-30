@@ -1,0 +1,12 @@
+command = "paccache"
+summary = "Cleans old package files out of the pacman cache (from pacman-contrib)"
+risk = "medium"
+
+flags = [
+  { names = ["-r", "--remove"], help = "Delete the selected cached package files", risk = "medium" },
+  { names = ["-d", "--dryrun"], help = "Only list what would be deleted" },
+  { names = ["-k", "--keep"], value = true, help = "Keep this many versions of each package" },
+  { names = ["-u", "--uninstalled"], help = "Only consider packages that are no longer installed" },
+  { names = ["-v", "--verbose"], help = "Print more" },
+  { names = ["-c", "--cachedir"], value = true, help = "Use this cache directory" },
+]

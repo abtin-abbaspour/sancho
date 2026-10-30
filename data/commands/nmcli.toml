@@ -1,0 +1,23 @@
+command = "nmcli"
+summary = "Controls NetworkManager"
+risk = "medium"
+
+subcommands = [
+  { words = ["radio", "wifi"], help = "Show the Wi-Fi radio state, or turn it on/off" },
+  { words = ["radio", "all"], help = "Show all radio states, or turn them all on/off" },
+  { words = ["device", "wifi", "list"], help = "List visible Wi-Fi networks (read-only)", risk = "low" },
+  { words = ["device", "wifi", "connect"], help = "Connect to a Wi-Fi network" },
+  { words = ["device", "status"], help = "List devices and their state (read-only)", risk = "low" },
+  { words = ["connection", "show"], help = "List saved connections (read-only)", risk = "low" },
+  { words = ["connection", "up"], help = "Activate a saved connection" },
+  { words = ["connection", "down"], help = "Deactivate a connection" },
+  { words = ["connection", "delete"], help = "Delete a saved connection", risk = "high" },
+  { words = ["networking", "off"], help = "Turn off all networking", risk = "high" },
+  { words = ["networking", "on"], help = "Turn networking back on" },
+  { words = ["general", "status"], help = "Show overall state (read-only)", risk = "low" },
+]
+flags = [
+  { names = ["-t", "--terse"], help = "Print machine-readable output" },
+  { names = ["-f", "--fields"], value = true, help = "Only these fields" },
+  { names = ["-p", "--pretty"], help = "Print with headers and aligned columns" },
+]

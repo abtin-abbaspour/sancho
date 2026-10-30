@@ -1,0 +1,14 @@
+command = "sudo"
+summary = "Runs the command that follows as root (or another user)"
+risk = "medium"
+wraps = true
+as_root = true
+
+flags = [
+  { names = ["-u", "--user"], value = true, help = "Run as this user instead of root" },
+  { names = ["-E", "--preserve-env"], help = "Keep your environment variables" },
+  { names = ["-i", "--login"], help = "Start a root login shell", risk = "high" },
+  { names = ["-s", "--shell"], help = "Start a root shell", risk = "high" },
+  { names = ["-k", "--reset-timestamp"], help = "Forget the cached password first" },
+  { names = ["-n", "--non-interactive"], help = "Fail instead of asking for a password" },
+]

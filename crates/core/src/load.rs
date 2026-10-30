@@ -11,6 +11,7 @@ use std::path::{Path, PathBuf};
 
 use serde::de::DeserializeOwned;
 
+use crate::command_doc::CommandDoc;
 use crate::primitive::Primitive;
 use crate::recipe::Recipe;
 use crate::validate::Problems;
@@ -59,11 +60,13 @@ pub struct Library {
     pub recipes: BTreeMap<String, Recipe>,
     /// Word → replacement words, applied to requests before matching.
     pub synonyms: BTreeMap<String, String>,
+    /// Notes on programs for `sancho explain`, by program name.
+    pub commands: BTreeMap<String, CommandDoc>,
 }
 
 impl Library {
-    /// Loads `<dir>/primitives/*.toml`, `<dir>/recipes/*.toml` and the
-    /// optional `<dir>/synonyms.toml`.
+    /// Loads `<dir>/primitives/*.toml`, `<dir>/recipes/*.toml`,
+    /// `<dir>/commands/*.toml` and the optional `<dir>/synonyms.toml`.
     /// Each file holds one item whose id matches the file name.
     pub fn load(dir: &Path) -> Result<Library, Vec<LoadError>> {
         let mut errors = Vec::new();
@@ -73,6 +76,13 @@ impl Library {
             if let Some(prim) = parse_file(&path, parse_primitive, &mut errors) {
                 check_file_name(&path, &prim.id, &mut errors);
                 lib.primitives.insert(prim.id.clone(), prim);
+            }
+        }
+
+        for path in list_data_files(&dir.join("commands"), false, &mut errors) {
+            if let Some(doc) = parse_file(&path, parse_command_doc, &mut errors) {
+                check_file_name(&path, &doc.command, &mut errors);
+                lib.commands.insert(doc.command.clone(), doc);
             }
         }
 
@@ -121,6 +131,18 @@ pub fn parse_primitive(file: &Path, src: &str) -> Result<Primitive, Vec<LoadErro
 /// or [`Recipe::validate`].
 pub fn parse_recipe(file: &Path, src: &str) -> Result<Recipe, Vec<LoadError>> {
     parse_toml(file, src)
+}
+
+/// Parses and validates notes on one program.
+pub fn parse_command_doc(file: &Path, src: &str) -> Result<CommandDoc, Vec<LoadError>> {
+    let doc: CommandDoc = parse_toml(file, src)?;
+    let mut p = Problems::default();
+    doc.validate(&mut p);
+    if p.is_empty() {
+        Ok(doc)
+    } else {
+        Err(problems_to_errors(file, p))
+    }
 }
 
 /// `word = "replacement words"`; both sides lowercase words.

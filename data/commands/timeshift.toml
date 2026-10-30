@@ -1,0 +1,15 @@
+command = "timeshift"
+summary = "Takes and restores system snapshots (rsync or btrfs)"
+risk = "low"
+
+flags = [
+  { names = ["--create"], help = "Take a snapshot" },
+  { names = ["--list"], help = "List snapshots (read-only)" },
+  { names = ["--restore"], help = "Restore the system from a snapshot", risk = "high" },
+  { names = ["--delete"], help = "Delete a snapshot", risk = "high" },
+  { names = ["--delete-all"], help = "Delete every snapshot", risk = "high" },
+  { names = ["--comments"], value = true, help = "With --create: a comment for the snapshot" },
+  { names = ["--tags"], value = true, help = "With --create: which schedule tags it gets (O, B, H, D, W, M)" },
+  { names = ["--scripted"], help = "Don't ask questions (for use from scripts)" },
+  { names = ["--snapshot"], value = true, help = "Which snapshot (with --restore or --delete)" },
+]

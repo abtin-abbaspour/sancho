@@ -1,0 +1,13 @@
+command = "cp"
+summary = "Copies files"
+risk = "medium"
+
+flags = [
+  { names = ["-r", "-R", "--recursive"], help = "Copy directories and everything in them" },
+  { names = ["-a", "--archive"], help = "Copy recursively, keeping permissions, owners and times" },
+  { names = ["-f", "--force"], help = "Replace destination files without asking" },
+  { names = ["-i", "--interactive"], help = "Ask before replacing files" },
+  { names = ["-n", "--no-clobber"], help = "Never replace existing files" },
+  { names = ["-v", "--verbose"], help = "Print each copied file" },
+  { names = ["-p"], help = "Keep permissions, owner and times" },
+]

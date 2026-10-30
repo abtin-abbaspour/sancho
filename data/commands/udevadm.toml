@@ -1,0 +1,21 @@
+command = "udevadm"
+summary = "Controls udev, which sets up devices and their permissions"
+risk = "low"
+
+subcommands = [
+  { words = ["control"], help = "Send a command to the running udev daemon" },
+  { words = ["trigger"], help = "Re-run device rules for devices that are already present" },
+  { words = ["info"], help = "Show what udev knows about devices (read-only)" },
+  { words = ["monitor"], help = "Print device events as they happen (read-only)" },
+  { words = ["settle"], help = "Wait until queued device events are handled" },
+]
+flags = [
+  { names = ["--reload", "-R"], help = "With control: re-read the rule files" },
+  { names = ["--action", "-c"], value = true, help = "With trigger: the event to send (e.g. change, add)" },
+  { names = ["--subsystem-match", "-s"], value = true, help = "With trigger: only devices of this subsystem" },
+  { names = ["--attr-match"], value = true, help = "With trigger: only devices with this attribute" },
+  { names = ["--export-db", "-e"], help = "With info: print the whole udev database" },
+  { names = ["--query", "-q"], value = true, help = "With info: what to show (property, path, ...)" },
+  { names = ["--name", "-n"], value = true, help = "With info: the device node to describe" },
+  { names = ["--attribute-walk", "-a"], help = "With info: show attributes of the device and its parents" },
+]

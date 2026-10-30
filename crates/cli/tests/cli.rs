@@ -109,6 +109,34 @@ fn unsupported_requests_explain_and_exit_1() {
     );
 }
 
+#[test]
+fn explain_describes_flags_and_flags_unknown_ones() {
+    let out = run(&["explain", "pacman -Syu --frobnicate"]);
+    assert!(out.status.success());
+    let stdout = String::from_utf8_lossy(&out.stdout);
+    let line = |start: &str| {
+        stdout
+            .lines()
+            .find(|l| l.trim_start().starts_with(start))
+            .unwrap_or_else(|| panic!("no {start} line in {stdout}"))
+            .to_string()
+    };
+    assert!(line("-y ").ends_with("Download fresh package databases first"));
+    assert!(line("--frobnicate").contains("?? not in sancho's notes on pacman"));
+    assert!(stdout.ends_with("Risk: unknown (something above is not in sancho's notes)\n"));
+}
+
+#[test]
+fn natural_language_explain_and_help_routing() {
+    let out = request(&["what", "does", "systemctl", "status", "sshd", "do"]);
+    let stdout = String::from_utf8_lossy(&out.stdout);
+    assert!(stdout.starts_with("$ systemctl status sshd\n"), "{stdout}");
+    assert!(stdout.ends_with("Risk: low\n"));
+    let out = request(&["help", "me", "with", "sshd"]);
+    assert_eq!(out.status.code(), Some(2));
+    assert!(String::from_utf8_lossy(&out.stdout).starts_with("What kind of help?\n"));
+}
+
 /// Runs the binary as uid 0 inside an unprivileged user namespace
 /// (`unshare --map-root-user`). This grants no real privileges on the host.
 /// Returns `None` when user namespaces are unavailable.

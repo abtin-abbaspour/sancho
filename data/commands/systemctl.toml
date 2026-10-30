@@ -1,0 +1,32 @@
+command = "systemctl"
+summary = "Controls systemd services and other units"
+risk = "medium"
+
+subcommands = [
+  { words = ["start"], help = "Start units now" },
+  { words = ["stop"], help = "Stop running units" },
+  { words = ["restart"], help = "Restart units (start them if not running)" },
+  { words = ["reload"], help = "Ask units to reload their configuration" },
+  { words = ["enable"], help = "Start units automatically at boot" },
+  { words = ["disable"], help = "Stop units starting automatically at boot" },
+  { words = ["mask"], help = "Make units impossible to start, even manually", risk = "high" },
+  { words = ["unmask"], help = "Undo mask" },
+  { words = ["status"], help = "Show unit state and recent log lines (read-only)", risk = "low" },
+  { words = ["is-enabled"], help = "Print whether units start at boot (read-only)", risk = "low" },
+  { words = ["is-active"], help = "Print whether units are running (read-only)", risk = "low" },
+  { words = ["list-units"], help = "List loaded units (read-only)", risk = "low" },
+  { words = ["list-unit-files"], help = "List installed unit files (read-only)", risk = "low" },
+  { words = ["daemon-reload"], help = "Re-read unit files after they changed" },
+  { words = ["reboot"], help = "Reboot the machine", risk = "high" },
+  { words = ["poweroff"], help = "Power off the machine", risk = "high" },
+]
+flags = [
+  { names = ["--now"], help = "With enable/disable: also start/stop the units now" },
+  { names = ["--user"], help = "Act on your user's units instead of the system's" },
+  { names = ["--no-pager"], help = "Print directly instead of through a pager" },
+  { names = ["--no-legend"], help = "Leave out column headers and footers" },
+  { names = ["-a", "--all"], help = "Include inactive units" },
+  { names = ["-l", "--full"], help = "Don't shorten long lines" },
+  { names = ["-f", "--force"], help = "With enable: overwrite conflicting links. Twice with reboot/poweroff: skip shutting down services", risk = "high" },
+  { names = ["-q", "--quiet"], help = "Print less" },
+]

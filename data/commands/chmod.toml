@@ -1,0 +1,8 @@
+command = "chmod"
+summary = "Changes file permissions"
+risk = "medium"
+
+flags = [
+  { names = ["-R", "--recursive"], help = "Also change everything inside directories", risk = "high" },
+  { names = ["-v", "--verbose"], help = "Print each changed file" },
+]

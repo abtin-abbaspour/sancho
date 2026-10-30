@@ -1,0 +1,13 @@
+command = "install"
+summary = "Copies a file into place and sets its permissions and owner (coreutils)"
+risk = "medium"
+
+flags = [
+  { names = ["-m", "--mode"], value = true, help = "Permissions for the new file, e.g. 0644" },
+  { names = ["-o", "--owner"], value = true, help = "Owner of the new file" },
+  { names = ["-g", "--group"], value = true, help = "Group of the new file" },
+  { names = ["-D"], help = "Create missing parent directories" },
+  { names = ["-d", "--directory"], help = "Create directories instead of copying a file" },
+  { names = ["-T", "--no-target-directory"], help = "Treat the destination as a file, never a directory" },
+  { names = ["-b", "--backup"], help = "Keep a backup of an existing destination file" },
+]
