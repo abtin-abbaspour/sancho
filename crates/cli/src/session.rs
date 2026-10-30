@@ -3,7 +3,7 @@
 //! else is a request (or a question about a command). Nothing runs without
 //! the usual plan and confirmation.
 
-use std::io::{self, BufRead, IsTerminal, Write};
+use std::io::{self, BufRead, IsTerminal};
 use std::path::Path;
 use std::process::ExitCode;
 
@@ -92,6 +92,51 @@ pub fn route(line: &str) -> Line {
     Line::Request(text.to_string())
 }
 
+/// Where lines come from: a line editor with in-memory history (arrow keys,
+/// Ctrl-R) on a terminal, plain stdin otherwise. History is never written
+/// to disk: it would leave a file behind and keep your requests.
+enum Input {
+    Editor(Box<rustyline::DefaultEditor>),
+    Plain,
+}
+
+impl Input {
+    fn new(tty: bool) -> Input {
+        match tty.then(rustyline::DefaultEditor::new) {
+            Some(Ok(editor)) => Input::Editor(Box::new(editor)),
+            _ => Input::Plain,
+        }
+    }
+
+    /// The next line, or `None` at the end of input (Ctrl-D).
+    fn next_line(&mut self) -> Option<String> {
+        use rustyline::error::ReadlineError;
+        match self {
+            Input::Editor(editor) => loop {
+                println!();
+                match editor.readline("sancho> ") {
+                    Ok(line) => {
+                        if !line.trim().is_empty() {
+                            let _ = editor.add_history_entry(line.as_str());
+                        }
+                        return Some(line);
+                    }
+                    // Ctrl-C clears the line, like a shell.
+                    Err(ReadlineError::Interrupted) => continue,
+                    Err(_) => return None,
+                }
+            },
+            Input::Plain => {
+                let mut line = String::new();
+                match io::stdin().lock().read_line(&mut line) {
+                    Ok(0) | Err(_) => None,
+                    Ok(_) => Some(line),
+                }
+            }
+        }
+    }
+}
+
 const HELP: &str = "\
 Tell me what you want done, in plain words. For example:
   update my system              install vlc and gimp
@@ -104,6 +149,7 @@ Your changes:         what did you do · undo that · undo the last 3
                       undo the keyboard thing · undo since 2h · redo
 Also:                 show my system · what have you learned · forget 3 · exit
 
+Up and down arrows recall earlier lines. Ctrl-C clears the line, Ctrl-D leaves.
 Nothing changes without your confirmation, and every change can be listed and undone.";
 
 pub fn run(lib: &Library, fixture: Option<&Path>, dry_run: bool) -> ExitCode {
@@ -118,16 +164,8 @@ pub fn run(lib: &Library, fixture: Option<&Path>, dry_run: bool) -> ExitCode {
         }
     }
     let dry_run = dry_run || fixture.is_some();
-    loop {
-        if tty {
-            print!("\nsancho> ");
-            let _ = io::stdout().flush();
-        }
-        let mut line = String::new();
-        match io::stdin().lock().read_line(&mut line) {
-            Ok(0) | Err(_) => break,
-            Ok(_) => {}
-        }
+    let mut input = Input::new(tty);
+    while let Some(line) = input.next_line() {
         if line.trim().is_empty() {
             continue;
         }

@@ -38,6 +38,7 @@ sancho> exit
 ```
 
 `sancho --dry-run` starts a practice session: plans are shown, never run.
+Up and down arrows recall earlier lines in the session (kept in memory only).
 
 Every phrase also works as a one-off command, e.g. `sancho restart sshd`, and there are
 direct commands for scripts: `sancho history`, `sancho undo [--last N | --since 2h | words]`,

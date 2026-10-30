@@ -14,6 +14,8 @@ path = "src/main.rs"
 clap = { version = "4.5", features = ["derive"] }
 # libc: geteuid() for the root refusal; no std equivalent.
 libc = "0.2"
+# rustyline: line editing and in-memory history for sessions (no history file).
+rustyline = { version = "19", default-features = false }
 sancho-core.workspace = true
 sancho-exec.workspace = true
 sancho-explain.workspace = true
