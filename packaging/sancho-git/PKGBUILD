@@ -1,13 +1,13 @@
-# Draft — not published. Before publishing: set `url` to the real repository,
-# tag a release, and confirm the name is free on the AUR.
+# Development package: builds the latest commit on main.
 # Maintainer: Abtin Abbaspour <34379699+abtin-abbaspour@users.noreply.github.com>
 
-pkgname=sancho
-pkgver=0.0.1
+pkgname=sancho-git
+_pkgname=sancho
+pkgver=0.0.1.r12.g05fd60a
 pkgrel=1
-pkgdesc="Plain-language Arch Linux tasks from verified recipes, with previews, a journal and undo"
+pkgdesc="Plain-language Arch Linux tasks from verified recipes, with previews, a journal and undo (development version)"
 arch=('x86_64' 'aarch64')
-url="https://github.com/OWNER/sancho"
+url="https://github.com/abtin-abbaspour/sancho"
 license=('MIT OR Apache-2.0')
 depends=('gcc-libs' 'glibc' 'pacman' 'sudo' 'systemd')
 optdepends=(
@@ -19,31 +19,42 @@ optdepends=(
   'timeshift: snapshots before system updates'
 )
 makedepends=('cargo' 'git')
-source=("$pkgname::git+$url#tag=v$pkgver")
+# tree-sitter's bundled C code can't be linked into Rust as GCC LTO bytecode.
+options=('!lto')
+provides=("$_pkgname")
+conflicts=("$_pkgname")
+source=("$_pkgname::git+$url.git#branch=main")
 sha256sums=('SKIP')
 
+pkgver() {
+  cd "$_pkgname"
+  local version
+  version=$(sed -n 's/^version = "\(.*\)"/\1/p' Cargo.toml | head -n1)
+  printf "%s.r%s.g%s" "$version" "$(git rev-list --count HEAD)" "$(git rev-parse --short=7 HEAD)"
+}
+
 prepare() {
-  cd "$pkgname"
+  cd "$_pkgname"
   export RUSTUP_TOOLCHAIN=stable
   cargo fetch --locked --target "$(rustc -vV | sed -n 's/host: //p')"
 }
 
 build() {
-  cd "$pkgname"
+  cd "$_pkgname"
   export RUSTUP_TOOLCHAIN=stable
   export CARGO_TARGET_DIR=target
   cargo build --frozen --release -p sancho
 }
 
 check() {
-  cd "$pkgname"
+  cd "$_pkgname"
   export RUSTUP_TOOLCHAIN=stable
   # Container tests need podman and are skipped here (they are #[ignore]).
   cargo test --frozen --workspace
 }
 
 package() {
-  cd "$pkgname"
+  cd "$_pkgname"
   install -Dm0755 -t "$pkgdir/usr/bin/" target/release/sancho
   install -d "$pkgdir/usr/share/sancho"
   cp -r --no-preserve=ownership data "$pkgdir/usr/share/sancho/"

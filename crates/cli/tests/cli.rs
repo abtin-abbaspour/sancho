@@ -18,6 +18,12 @@ fn home(name: &str) -> std::path::PathBuf {
 fn run_in(dir: &std::path::Path, args: &[&str]) -> Output {
     Command::new(BIN)
         .args(args)
+        // Explicit, so tests don't depend on how the build was configured
+        // (release-like builds look in /usr/share/sancho/data).
+        .env(
+            "SANCHO_DATA",
+            concat!(env!("CARGO_MANIFEST_DIR"), "/../../data"),
+        )
         .env("XDG_DATA_HOME", dir.join("data"))
         .env("XDG_STATE_HOME", dir.join("state"))
         .output()
