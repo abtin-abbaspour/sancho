@@ -1,8 +1,9 @@
 //! `user_group` (`/etc/group`) and `user` (regular accounts in `/etc/passwd`).
 
+use sancho_core::value::valid_account;
 use sancho_core::System;
 
-use crate::{safe_token, Value};
+use crate::Value;
 
 pub fn groups(sys: &dyn System) -> Vec<Value> {
     sys.read("/etc/group")
@@ -29,12 +30,4 @@ pub fn users(sys: &dyn System) -> Vec<Value> {
                 .then(|| Value::new(name, name).tag("current", current.as_deref() == Some(name)))
         })
         .collect()
-}
-
-/// shadow-utils' default rule: `[a-z_][a-z0-9_-]*[$]?`, at most 32 bytes.
-fn valid_account(name: &str) -> bool {
-    let body = name.strip_suffix('$').unwrap_or(name);
-    safe_token(body, "_-", 32)
-        && body.starts_with(|c: char| c.is_ascii_lowercase() || c == '_')
-        && !body.chars().any(|c| c.is_ascii_uppercase())
 }

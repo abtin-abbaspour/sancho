@@ -68,11 +68,26 @@ impl ValueType {
     }
 
     /// Checks a literal written in a recipe or primitive default.
+    ///
+    /// Names of system objects (units, packages, ...) are checked for syntax
+    /// here; whether they exist is checked against the system at plan time.
     pub fn check_literal(self, s: &str, values: &[String]) -> Result<(), String> {
+        let named = |ok: bool, what: &str| {
+            if ok {
+                Ok(())
+            } else {
+                Err(format!("'{s}' is not a valid {what} name"))
+            }
+        };
         match self {
-            t if t.is_resolved() => Err(format!(
-                "a {t} value must come from a slot resolved from the system, not a literal"
+            t if t.is_compound() => Err(format!(
+                "a {t} must come from a slot resolved from the system, not a literal"
             )),
+            ValueType::SystemdUnit => named(valid_unit(s), "systemd unit"),
+            ValueType::Package => named(valid_package(s), "package"),
+            ValueType::NetIface => named(valid_iface(s), "network interface"),
+            ValueType::UserGroup => named(valid_account(s), "group"),
+            ValueType::User => named(valid_account(s), "user"),
             ValueType::Path => check_path(s),
             ValueType::FileMode => {
                 let digits = s.strip_prefix('0').unwrap_or(s);
@@ -120,6 +135,45 @@ impl fmt::Display for ValueType {
         };
         f.write_str(s)
     }
+}
+
+/// Non-empty, at most `max_len` bytes, only ASCII alphanumerics and `extra`,
+/// and not starting with `-` (so it can never be read as an option).
+pub fn safe_token(s: &str, extra: &str, max_len: usize) -> bool {
+    !s.is_empty()
+        && s.len() <= max_len
+        && !s.starts_with('-')
+        && s.chars()
+            .all(|c| c.is_ascii_alphanumeric() || extra.contains(c))
+}
+
+/// systemd unit names: `[A-Za-z0-9:_.\-@]` plus `\` escapes, with a type suffix.
+pub fn valid_unit(name: &str) -> bool {
+    safe_token(name, ":_.-@\\", 255)
+        && name
+            .rsplit_once('.')
+            .is_some_and(|(stem, ty)| !stem.is_empty() && !ty.is_empty())
+}
+
+/// pacman package names: lowercase alphanumerics and `@._+-`, not starting
+/// with `-` or `.`.
+pub fn valid_package(name: &str) -> bool {
+    safe_token(name, "@._+-", 255)
+        && !name.starts_with('.')
+        && !name.chars().any(|c| c.is_ascii_uppercase())
+}
+
+/// Kernel interface names: at most 15 bytes, no '/', whitespace or ':'.
+pub fn valid_iface(name: &str) -> bool {
+    safe_token(name, "_.-", 15)
+}
+
+/// shadow-utils' default rule: `[a-z_][a-z0-9_-]*[$]?`, at most 32 bytes.
+pub fn valid_account(name: &str) -> bool {
+    let body = name.strip_suffix('$').unwrap_or(name);
+    safe_token(body, "_-", 32)
+        && body.starts_with(|c: char| c.is_ascii_lowercase() || c == '_')
+        && !body.chars().any(|c| c.is_ascii_uppercase())
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -192,6 +246,15 @@ mod tests {
         assert!(ValueType::Choice.check_literal("maybe", &vals).is_err());
         assert!(ValueType::SystemdUnit
             .check_literal("sshd.service", none)
+            .is_ok());
+        assert!(ValueType::SystemdUnit
+            .check_literal("-x.service", none)
+            .is_err());
+        assert!(ValueType::SystemdUnit.check_literal("sshd", none).is_err());
+        assert!(ValueType::Package.check_literal("Firefox", none).is_err());
+        assert!(ValueType::UserGroup.check_literal("wheel", none).is_ok());
+        assert!(ValueType::HidDevice
+            .check_literal("046d:c52b", none)
             .is_err());
     }
 }

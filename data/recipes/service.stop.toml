@@ -1,0 +1,22 @@
+id = "service.stop"
+version = 1
+summary = "Stop a running systemd service (it may start again at boot)"
+domains = ["services"]
+patterns = [
+  "stop {unit}",
+  "stop (the )?{unit} (service|daemon)",
+  "(kill|shut down|shutdown) (the )?{unit} (service|daemon)",
+]
+risk = "medium"
+requires = { init = ["systemd"] }
+
+[slots]
+unit = { type = "systemd_unit" }
+
+[[steps]]
+primitive = "systemctl.stop"
+args = { unit = "{unit}" }
+explain = "Stop {unit} now"
+
+[tests]
+verified_by = "container"

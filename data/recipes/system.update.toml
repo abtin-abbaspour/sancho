@@ -1,0 +1,46 @@
+id = "system.update"
+version = 1
+summary = "Update all installed packages, including AUR packages, then trim the package cache"
+domains = ["packages", "system"]
+patterns = [
+  "(update|upgrade)",
+  "(please )?(update|upgrade) (my |the )?(system|computer|pc|machine|laptop|arch|os|everything)",
+  "(update|upgrade) all (of )?(my |the )?(packages|software|programs|apps)",
+  "(update|upgrade) (my |the )?(packages|software)",
+  "(do |run )?(a )?(full )?system (update|upgrade)",
+  "(sync|refresh) and (update|upgrade)",
+  "(install|get) (the |all )?updates",
+]
+risk = "high"
+notes = [
+  "Arch does not support downgrading single packages; without a snapshot an upgrade cannot be undone.",
+]
+
+[[steps]]
+primitive = "snapper.create"
+requires = { snapshot_tool = ["snapper"] }
+explain = "Take a snapper snapshot so the update can be rolled back"
+
+[[steps]]
+primitive = "timeshift.create"
+requires = { snapshot_tool = ["timeshift"] }
+explain = "Take a Timeshift snapshot so the update can be rolled back"
+
+[[steps]]
+primitive = "pacman.sync_upgrade"
+explain = "Upgrade all packages from the official repositories"
+
+[[steps]]
+primitive = "aur_helper.upgrade"
+requires = { aur_helper = ["paru", "yay"] }
+args = { helper = "{profile.aur_helper}" }
+explain = "Upgrade AUR packages with {profile.aur_helper}"
+
+[[steps]]
+primitive = "paccache.keep"
+optional = true
+args = { keep = "2" }
+explain = "Delete cached package files older than the newest 2 versions"
+
+[tests]
+verified_by = "container"

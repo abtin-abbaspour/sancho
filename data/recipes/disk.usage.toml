@@ -1,0 +1,20 @@
+id = "disk.usage"
+version = 1
+summary = "Show how much disk space is used and free"
+domains = ["storage"]
+patterns = [
+  "(show|check|display) (my |the )?(disk|storage|drive) (space|usage)",
+  "how much (free )?(disk |storage )?space (do i have|is left|is free|is there|have i got)( left)?",
+  "(disk|storage) (space|usage)",
+  "(is|are) my (disk|drive|disks|drives) full",
+  "how full (is|are) my (disk|drive|disks|drives)",
+  "(free|available) (disk )?space",
+]
+risk = "low"
+
+[[steps]]
+primitive = "df.show"
+explain = "List mounted filesystems with their used and free space"
+
+[tests]
+verified_by = "container"

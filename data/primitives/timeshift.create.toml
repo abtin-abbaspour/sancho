@@ -1,0 +1,8 @@
+id = "timeshift.create"
+summary = "Take a system snapshot with Timeshift"
+command = ["timeshift", "--create", "--scripted", "--comments", "sancho: before changes"]
+package = "timeshift"
+needs_root = true
+risk = "low"
+read_only = false
+effects = [{ kind = "snapshot", target = "system" }]

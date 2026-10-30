@@ -1,0 +1,7 @@
+id = "df.show"
+summary = "Show used and free space on mounted filesystems"
+command = ["df", "-h", "-x", "tmpfs", "-x", "devtmpfs", "-x", "efivarfs", "-x", "overlay"]
+package = "coreutils"
+needs_root = false
+risk = "low"
+read_only = true

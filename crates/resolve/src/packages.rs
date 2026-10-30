@@ -2,9 +2,10 @@
 
 use std::collections::BTreeMap;
 
+use sancho_core::value::valid_package;
 use sancho_core::{Query, System};
 
-use crate::{safe_token, ResolveError, Value};
+use crate::{ResolveError, Value};
 
 pub fn enumerate(sys: &dyn System) -> Result<Vec<Value>, ResolveError> {
     let installed_out = sys
@@ -40,12 +41,4 @@ pub fn enumerate(sys: &dyn System) -> Result<Vec<Value>, ResolveError> {
             Value::new(&name, format!("{name} {ver} ({where_})")).tag("installed", installed)
         })
         .collect())
-}
-
-/// pacman package names: lowercase alphanumerics and `@._+-`, not starting
-/// with `-` or `.`.
-fn valid_package(name: &str) -> bool {
-    safe_token(name, "@._+-", 255)
-        && !name.starts_with('.')
-        && !name.chars().any(|c| c.is_ascii_uppercase())
 }

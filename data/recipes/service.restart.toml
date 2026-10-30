@@ -1,0 +1,23 @@
+id = "service.restart"
+version = 1
+summary = "Restart a systemd service"
+domains = ["services"]
+patterns = [
+  "restart {unit}",
+  "restart (the )?{unit} (service|daemon)",
+  "(restart|reboot) the {unit} (service|daemon)",
+  "(stop and start|bounce) {unit}",
+]
+risk = "medium"
+requires = { init = ["systemd"] }
+
+[slots]
+unit = { type = "systemd_unit" }
+
+[[steps]]
+primitive = "systemctl.restart"
+args = { unit = "{unit}" }
+explain = "Restart {unit}"
+
+[tests]
+verified_by = "container"

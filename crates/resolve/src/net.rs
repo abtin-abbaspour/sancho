@@ -1,8 +1,9 @@
 //! `net_iface`: physical network interfaces from `/sys/class/net`.
 
+use sancho_core::value::valid_iface;
 use sancho_core::System;
 
-use crate::{safe_token, Value};
+use crate::Value;
 
 pub fn enumerate(sys: &dyn System) -> Vec<Value> {
     sys.read_dir("/sys/class/net")
@@ -24,9 +25,4 @@ pub fn enumerate(sys: &dyn System) -> Vec<Value> {
                 .tag("wired", ether && !wireless)
         })
         .collect()
-}
-
-/// Kernel interface names: at most 15 bytes, no '/', whitespace or ':'.
-fn valid_iface(name: &str) -> bool {
-    safe_token(name, "_.-", 15)
 }

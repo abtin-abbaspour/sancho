@@ -1,0 +1,29 @@
+id = "service.enable"
+version = 1
+summary = "Enable a systemd service at boot and start it now"
+domains = ["services"]
+patterns = [
+  "enable {unit}",
+  "enable (the )?{unit} (service|daemon)",
+  "(start|run) {unit} (at|on) (boot|startup)",
+  "make {unit} start (at|on) (boot|startup)",
+  "(turn on|activate) (the )?{unit} (service|daemon)",
+]
+risk = "medium"
+requires = { init = ["systemd"] }
+
+[slots]
+unit = { type = "systemd_unit" }
+
+[[steps]]
+primitive = "systemctl.enable"
+args = { unit = "{unit}" }
+explain = "Start {unit} automatically at boot"
+
+[[steps]]
+primitive = "systemctl.start"
+args = { unit = "{unit}" }
+explain = "Start {unit} now"
+
+[tests]
+verified_by = "container"

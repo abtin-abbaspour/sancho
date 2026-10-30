@@ -1,0 +1,29 @@
+id = "service.disable"
+version = 1
+summary = "Disable a systemd service at boot and stop it now"
+domains = ["services"]
+patterns = [
+  "disable {unit}",
+  "disable (the )?{unit} (service|daemon)",
+  "(stop|don't start) {unit} (at|on|from) (boot|startup)",
+  "stop {unit} (from )?(starting|running) (at|on) (boot|startup)",
+  "(turn off|deactivate) (the )?{unit} (service|daemon)",
+]
+risk = "medium"
+requires = { init = ["systemd"] }
+
+[slots]
+unit = { type = "systemd_unit", filter = { enabled = true } }
+
+[[steps]]
+primitive = "systemctl.disable"
+args = { unit = "{unit}" }
+explain = "Stop {unit} from starting at boot"
+
+[[steps]]
+primitive = "systemctl.stop"
+args = { unit = "{unit}" }
+explain = "Stop {unit} now"
+
+[tests]
+verified_by = "container"

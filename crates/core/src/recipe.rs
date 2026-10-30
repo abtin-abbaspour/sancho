@@ -4,7 +4,8 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use serde::Deserialize;
 
-use crate::primitive::{check_values, Primitive};
+use crate::pattern::Pattern;
+use crate::primitive::{check_values, ArgSpec, Primitive};
 use crate::template::{is_ident, Part, Ref, Template};
 use crate::validate::{check_id, Problems};
 use crate::value::{check_path, check_path_fragment, FilterKind, Risk, ValueType};
@@ -17,7 +18,7 @@ pub struct Recipe {
     pub summary: String,
     #[serde(default)]
     pub domains: Vec<String>,
-    pub patterns: Vec<Template>,
+    pub patterns: Vec<Pattern>,
     #[serde(default)]
     pub slots: BTreeMap<String, SlotSpec>,
     /// Profile facts that must hold; each lists the accepted values.
@@ -141,6 +142,14 @@ pub struct Step {
     #[serde(default)]
     pub args: BTreeMap<String, Template>,
     pub explain: Template,
+    /// Profile facts this step needs, in addition to the recipe's; the step is
+    /// left out of the plan (and the plan says so) when they don't hold.
+    #[serde(default)]
+    pub requires: BTreeMap<ProfileKey, Vec<String>>,
+    /// Skip with a note, instead of failing the plan, when the command is not
+    /// installed (e.g. cache cleanup from an optional package).
+    #[serde(default)]
+    pub optional: bool,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -182,10 +191,24 @@ impl Recipe {
             p.push("patterns", "at least one pattern is required");
         }
         for (i, pat) in self.patterns.iter().enumerate() {
-            for r in pat.refs() {
-                if r.attr.is_some() || !self.slots.contains_key(&r.name) {
-                    p.push(format!("patterns[{i}]"), format!("{r} is not a slot"));
+            let slots = pat.slots();
+            for name in &slots {
+                if !self.slots.contains_key(*name) {
+                    p.push(
+                        format!("patterns[{i}]"),
+                        format!("{{{name}}} is not a slot"),
+                    );
                 }
+            }
+            if let Some(dup) = slots
+                .iter()
+                .enumerate()
+                .find(|(j, n)| slots[..*j].contains(n))
+            {
+                p.push(
+                    format!("patterns[{i}]"),
+                    format!("{{{}}} appears twice", dup.1),
+                );
             }
         }
 
@@ -193,21 +216,7 @@ impl Recipe {
             self.validate_slot(p, name, slot);
         }
 
-        for (key, values) in &self.requires {
-            let field = format!("requires.{}", key.name());
-            if values.is_empty() {
-                p.push(&field, "must list at least one value");
-            }
-            for v in values
-                .iter()
-                .filter(|v| !key.values().contains(&v.as_str()))
-            {
-                p.push(
-                    &field,
-                    format!("'{v}' is not one of: {}", key.values().join(", ")),
-                );
-            }
-        }
+        check_requires(p, "requires", &self.requires);
 
         if self.steps.is_empty() {
             p.push("steps", "at least one step is required");
@@ -271,8 +280,9 @@ impl Recipe {
         primitives: &BTreeMap<String, Primitive>,
         used: &mut BTreeSet<&'a str>,
     ) {
+        check_requires(p, &format!("{field}.requires"), &step.requires);
         for r in step.explain.refs() {
-            self.check_ref(p, &format!("{field}.explain"), r, used);
+            self.check_ref(p, &format!("{field}.explain"), r, step, used);
         }
         let Some(prim) = primitives.get(&step.primitive) else {
             p.push(
@@ -305,9 +315,9 @@ impl Recipe {
                 continue;
             };
             for r in tmpl.refs() {
-                self.check_ref(p, &afield, r, used);
+                self.check_ref(p, &afield, r, step, used);
             }
-            self.check_arg_value(p, &afield, arg.ty, &arg.values, arg.variadic, tmpl);
+            self.check_arg_value(p, &afield, arg, step, tmpl);
         }
     }
 
@@ -316,12 +326,13 @@ impl Recipe {
         p: &mut Problems,
         field: &str,
         r: &Ref,
+        step: &Step,
         used: &mut BTreeSet<&'a str>,
     ) {
         if r.name == PROFILE {
             match r.attr.as_deref().and_then(ProfileKey::from_name) {
                 None => p.push(field, format!("{r} is not a profile fact")),
-                Some(key) if !self.requires.contains_key(&key) => p.push(
+                Some(key) if self.constraint(step, key).is_none() => p.push(
                     field,
                     format!("{r} is used but requires does not constrain it"),
                 ),
@@ -350,22 +361,28 @@ impl Recipe {
         }
     }
 
+    /// Accepted values for a profile fact in a step: the step's own constraint,
+    /// else the recipe's.
+    fn constraint<'a>(&'a self, step: &'a Step, key: ProfileKey) -> Option<&'a Vec<String>> {
+        step.requires.get(&key).or_else(|| self.requires.get(&key))
+    }
+
     /// The core safety check: values reaching a typed argument must be typed.
     fn check_arg_value(
         &self,
         p: &mut Problems,
         field: &str,
-        ty: ValueType,
-        values: &[String],
-        variadic: bool,
+        arg: &ArgSpec,
+        step: &Step,
         tmpl: &Template,
     ) {
+        let (ty, values, variadic) = (arg.ty, arg.values.as_slice(), arg.variadic);
         if let Some(r) = tmpl.as_single_ref() {
             if r.name == PROFILE {
                 if ty != ValueType::Choice {
                     p.push(field, "profile facts can only fill choice args");
                 } else if let Some(key) = r.attr.as_deref().and_then(ProfileKey::from_name) {
-                    let allowed = self.requires.get(&key).into_iter().flatten();
+                    let allowed = self.constraint(step, key).into_iter().flatten();
                     for v in allowed.filter(|v| !values.contains(v)) {
                         p.push(
                             field,
@@ -435,6 +452,24 @@ impl Recipe {
                 field,
                 format!("a {t} arg must be filled by exactly one slot or literal, not a template"),
             ),
+        }
+    }
+}
+
+fn check_requires(p: &mut Problems, field: &str, requires: &BTreeMap<ProfileKey, Vec<String>>) {
+    for (key, values) in requires {
+        let field = format!("{field}.{}", key.name());
+        if values.is_empty() {
+            p.push(&field, "must list at least one value");
+        }
+        for v in values
+            .iter()
+            .filter(|v| !key.values().contains(&v.as_str()))
+        {
+            p.push(
+                &field,
+                format!("'{v}' is not one of: {}", key.values().join(", ")),
+            );
         }
     }
 }

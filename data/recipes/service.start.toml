@@ -1,0 +1,22 @@
+id = "service.start"
+version = 1
+summary = "Start a systemd service now (it will not start at boot)"
+domains = ["services"]
+patterns = [
+  "start {unit}",
+  "start (the )?{unit} (service|daemon)",
+  "(run|launch) (the )?{unit} (service|daemon)",
+]
+risk = "medium"
+requires = { init = ["systemd"] }
+
+[slots]
+unit = { type = "systemd_unit" }
+
+[[steps]]
+primitive = "systemctl.start"
+args = { unit = "{unit}" }
+explain = "Start {unit} now"
+
+[tests]
+verified_by = "container"

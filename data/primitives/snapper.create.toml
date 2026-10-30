@@ -1,0 +1,8 @@
+id = "snapper.create"
+summary = "Take a snapshot of the root filesystem with snapper"
+command = ["snapper", "-c", "root", "create", "--cleanup-algorithm", "number", "--description", "sancho: before changes"]
+package = "snapper"
+needs_root = true
+risk = "low"
+read_only = false
+effects = [{ kind = "snapshot", target = "root" }]

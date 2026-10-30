@@ -1,9 +1,10 @@
 //! `browser`: installed web browsers, from desktop entries in
 //! `/usr/share/applications` with the `WebBrowser` category.
 
+use sancho_core::value::safe_token;
 use sancho_core::System;
 
-use crate::{safe_token, Value};
+use crate::Value;
 
 /// Desktop-file prefixes of Chromium-based browsers, which support WebHID.
 /// Anything else (Firefox and forks, unknown browsers) is assumed not to.

@@ -1,0 +1,24 @@
+id = "package.install"
+version = 1
+summary = "Install packages from the official repositories"
+domains = ["packages"]
+patterns = [
+  "install {packages}",
+  "install (the )?(package|packages|program|app|apps) {packages}",
+  "(please )?install {packages} (for me|please)",
+  "(get|download) (me )?{packages}",
+  "i (want|need) to install {packages}",
+  "can you install {packages}",
+]
+risk = "medium"
+
+[slots]
+packages = { type = "package", multiple = true }
+
+[[steps]]
+primitive = "pacman.install"
+args = { packages = "{packages}" }
+explain = "Install {packages}"
+
+[tests]
+verified_by = "container"

@@ -57,10 +57,13 @@ pub fn format_errors(errors: &[LoadError]) -> String {
 pub struct Library {
     pub primitives: BTreeMap<String, Primitive>,
     pub recipes: BTreeMap<String, Recipe>,
+    /// Word → replacement words, applied to requests before matching.
+    pub synonyms: BTreeMap<String, String>,
 }
 
 impl Library {
-    /// Loads `<dir>/primitives/*.toml` and `<dir>/recipes/*.toml`.
+    /// Loads `<dir>/primitives/*.toml`, `<dir>/recipes/*.toml` and the
+    /// optional `<dir>/synonyms.toml`.
     /// Each file holds one item whose id matches the file name.
     pub fn load(dir: &Path) -> Result<Library, Vec<LoadError>> {
         let mut errors = Vec::new();
@@ -70,6 +73,13 @@ impl Library {
             if let Some(prim) = parse_file(&path, parse_primitive, &mut errors) {
                 check_file_name(&path, &prim.id, &mut errors);
                 lib.primitives.insert(prim.id.clone(), prim);
+            }
+        }
+
+        let synonyms_file = dir.join("synonyms.toml");
+        if synonyms_file.exists() {
+            if let Some(syn) = parse_file(&synonyms_file, parse_synonyms, &mut errors) {
+                lib.synonyms = syn;
             }
         }
 
@@ -111,6 +121,30 @@ pub fn parse_primitive(file: &Path, src: &str) -> Result<Primitive, Vec<LoadErro
 /// or [`Recipe::validate`].
 pub fn parse_recipe(file: &Path, src: &str) -> Result<Recipe, Vec<LoadError>> {
     parse_toml(file, src)
+}
+
+/// `word = "replacement words"`; both sides lowercase words.
+pub fn parse_synonyms(file: &Path, src: &str) -> Result<BTreeMap<String, String>, Vec<LoadError>> {
+    let map: BTreeMap<String, String> = parse_toml(file, src)?;
+    let word = |w: &str| {
+        !w.is_empty()
+            && w.chars()
+                .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || "'-".contains(c))
+    };
+    let mut p = Problems::default();
+    for (k, v) in &map {
+        if !word(k) {
+            p.push(k.clone(), "must be a single lowercase word");
+        }
+        if v.split_whitespace().next().is_none() || !v.split_whitespace().all(word) {
+            p.push(k.clone(), "replacement must be lowercase words");
+        }
+    }
+    if p.is_empty() {
+        Ok(map)
+    } else {
+        Err(problems_to_errors(file, p))
+    }
 }
 
 fn parse_toml<T: DeserializeOwned>(file: &Path, src: &str) -> Result<T, Vec<LoadError>> {

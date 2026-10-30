@@ -22,6 +22,9 @@ pub enum EffectKind {
     GroupMembership,
     /// Radio on/off state (e.g. Wi-Fi).
     RadioState,
+    /// Creates a filesystem snapshot; the snapshot tool's own retention
+    /// policy cleans it up, so there is nothing to undo.
+    Snapshot,
     /// Reloads, restarts, triggers: transient, nothing to restore.
     Runtime,
     /// rm, mkfs, dd and the like.
@@ -51,7 +54,7 @@ impl EffectKind {
             | RadioState => Reversibility::Reversible,
             PackageInstall | PackageRemove => Reversibility::ReversibleWhileCached,
             PackageUpgrade => Reversibility::SnapshotOnly,
-            Runtime => Reversibility::NoUndoNeeded,
+            Runtime | Snapshot => Reversibility::NoUndoNeeded,
             PackageCachePrune | Destructive => Reversibility::Irreversible,
         }
     }
@@ -71,6 +74,7 @@ impl fmt::Display for EffectKind {
             PackageCachePrune => "package_cache_prune",
             GroupMembership => "group_membership",
             RadioState => "radio_state",
+            Snapshot => "snapshot",
             Runtime => "runtime",
             Destructive => "destructive",
         })

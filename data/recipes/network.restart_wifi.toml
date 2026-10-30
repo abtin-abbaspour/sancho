@@ -1,0 +1,33 @@
+id = "network.restart_wifi"
+version = 1
+summary = "Restart Wi-Fi (NetworkManager: radio off and on; iwd: restart the daemon)"
+domains = ["network"]
+patterns = [
+  "(restart|reset|reconnect|reboot) (my |the )?(wifi|wireless|wlan)( connection| adapter| network)?",
+  "turn (my |the )?(wifi|wireless) off and (back )?on( again)?",
+  "(cycle|bounce) (my |the )?(wifi|wireless)",
+]
+risk = "medium"
+requires = { network = ["networkmanager", "iwd"] }
+
+[[steps]]
+primitive = "nmcli.radio_wifi"
+requires = { network = ["networkmanager"] }
+args = { state = "off" }
+explain = "Turn the Wi-Fi radio off"
+
+[[steps]]
+primitive = "nmcli.radio_wifi"
+requires = { network = ["networkmanager"] }
+args = { state = "on" }
+explain = "Turn the Wi-Fi radio back on"
+
+[[steps]]
+primitive = "systemctl.restart"
+requires = { network = ["iwd"] }
+args = { unit = "iwd.service" }
+explain = "Restart iwd, which manages Wi-Fi"
+
+[tests]
+verified_by = "mock"
+reason = "Needs a wireless device and a running NetworkManager or iwd"

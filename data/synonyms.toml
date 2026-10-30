@@ -1,0 +1,8 @@
+# Applied to every request before matching: word = "replacement words".
+# Keep this to spelling variants and shorthand; meaning belongs in recipe patterns.
+"wi-fi" = "wifi"
+"pkg" = "package"
+"pkgs" = "packages"
+"svc" = "service"
+"uninstal" = "uninstall"
+"dont" = "don't"

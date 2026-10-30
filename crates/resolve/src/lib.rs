@@ -147,7 +147,10 @@ pub fn resolve(
 
     let mut tags = Vec::new();
     let mut words = Vec::new();
-    for word in lower.split_whitespace().filter(|w| !FILLER.contains(w)) {
+    for word in lower
+        .split_whitespace()
+        .filter(|w| !FILLER.contains(w) && !generic_noun(ty, w))
+    {
         match class_word(ty, word) {
             Some(tag) => tags.push(tag),
             None => words.push(word),
@@ -201,6 +204,22 @@ fn passes_filters(v: &Value, ty: ValueType, filter: &BTreeMap<String, FilterValu
 
 /// Words that carry no meaning for selection ("my keyboard", "the mouse").
 const FILLER: &[&str] = &["my", "the", "a", "an", "this", "that"];
+
+/// Nouns that name the type itself ("my browser", "the sshd service") and so
+/// say nothing about which value is meant.
+fn generic_noun(ty: ValueType, word: &str) -> bool {
+    let nouns: &[&str] = match ty {
+        ValueType::HidDevice => &["device", "devices"],
+        ValueType::SystemdUnit => &["service", "services", "daemon", "unit"],
+        ValueType::Package => &["package", "packages", "program", "app"],
+        ValueType::NetIface => &["interface", "adapter", "connection", "network"],
+        ValueType::Browser => &["browser", "web"],
+        ValueType::UserGroup => &["group"],
+        ValueType::User => &["user", "account"],
+        _ => &[],
+    };
+    nouns.contains(&word)
+}
 
 /// Keys a mention can name exactly, following each tool's own conventions.
 fn exact_keys(ty: ValueType, mention: &str) -> Vec<String> {
@@ -256,14 +275,4 @@ fn type_noun(ty: ValueType) -> &'static str {
         ValueType::User => "user",
         _ => "value",
     }
-}
-
-/// True if `s` is non-empty, made only of ASCII alphanumerics and `extra`,
-/// and does not start with `-` (so it can never be read as an option).
-fn safe_token(s: &str, extra: &str, max_len: usize) -> bool {
-    !s.is_empty()
-        && s.len() <= max_len
-        && !s.starts_with('-')
-        && s.chars()
-            .all(|c| c.is_ascii_alphanumeric() || extra.contains(c))
 }

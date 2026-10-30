@@ -1,0 +1,42 @@
+id = "device.grant_hid_browser_access"
+version = 1
+summary = "Let a Chromium-based browser access a HID device over WebHID (e.g. keyboard configurators like VIA)"
+domains = ["input_devices"]
+patterns = [
+  "give {browser} access to (my |the )?{device}",
+  "let {browser} (configure|access|use|see|talk to) (my |the )?{device}",
+  "allow {browser} to (configure|access|use|see|talk to) (my |the )?{device}",
+  "(configure|set up) (my |the )?{device} (in|from|with|using) {browser}",
+  "(enable|allow) webhid (access )?(for|on) (my |the )?{device}",
+  "(make|let) (via|vial|webhid) (see|detect|find|configure) (my |the )?{device}",
+]
+risk = "medium"
+notes = ["WebHID only works in Chromium-based browsers; Firefox cannot be used."]
+
+[slots]
+device = { type = "hid_device" }
+browser = { type = "browser", filter = { webhid = true } }
+
+[[steps]]
+primitive = "file.write_root"
+explain = "Allow your login session to access {device.name} ({device.vid}:{device.pid}) from browsers such as {browser.name}"
+[steps.args]
+mode = "0644"
+path = "/etc/udev/rules.d/70-sancho-hid-{device.vid}-{device.pid}.rules"
+content = '''
+# Written by sancho: user-session access to {device.name} for WebHID.
+KERNEL=="hidraw*", SUBSYSTEM=="hidraw", ATTRS{{idVendor}}=="{device.vid}", ATTRS{{idProduct}}=="{device.pid}", TAG+="uaccess"
+'''
+
+[[steps]]
+primitive = "udevadm.reload"
+explain = "Reload device rules"
+
+[[steps]]
+primitive = "udevadm.trigger"
+args = { subsystem = "hidraw" }
+explain = "Apply the new rule to {device.name} now"
+
+[tests]
+verified_by = "mock"
+reason = "Needs real hidraw devices and udev; the resolver is tested against captured fixtures"

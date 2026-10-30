@@ -59,6 +59,7 @@ fn shipped_data_loads() {
     let lib = shipped();
     let expected = [
         "aur_helper.upgrade",
+        "df.show",
         "file.write_root",
         "ip.link",
         "lsusb.list",
@@ -67,17 +68,34 @@ fn shipped_data_loads() {
         "pacman.install",
         "pacman.remove",
         "pacman.sync_upgrade",
+        "snapper.create",
         "systemctl.disable",
         "systemctl.enable",
         "systemctl.restart",
         "systemctl.start",
         "systemctl.status",
         "systemctl.stop",
+        "timeshift.create",
         "udevadm.reload",
         "udevadm.trigger",
         "usermod.add_group",
     ];
     assert_eq!(lib.primitives.keys().collect::<Vec<_>>(), expected);
+    let recipes = [
+        "device.grant_hid_browser_access",
+        "disk.usage",
+        "network.restart_wifi",
+        "package.install",
+        "package.remove",
+        "service.disable",
+        "service.enable",
+        "service.restart",
+        "service.start",
+        "service.stop",
+        "system.update",
+        "user.add_to_group",
+    ];
+    assert_eq!(lib.recipes.keys().collect::<Vec<_>>(), recipes);
 }
 
 #[test]
@@ -373,9 +391,9 @@ fn recipe_errors_name_the_field() {
             ),
             (
                 r#"{ unit = "{unit}" }"#,
-                r#"{ unit = "sshd.service" }"#,
+                r#"{ unit = "-sshd.service" }"#,
                 Field("steps[0].args.unit"),
-                "must come from a slot",
+                "not a valid systemd unit name",
             ),
             (
                 r#"{ unit = "{unit}" }"#,
@@ -588,5 +606,49 @@ fn one_of_filters_check_their_values() {
     let recipe = parse_recipe(Path::new("t.toml"), &ok).unwrap();
     let mut p = Problems::default();
     recipe.validate(&mut p, &shipped().primitives);
+    assert!(p.is_empty(), "{:?}", p.0);
+}
+
+#[test]
+fn step_requirements_and_patterns_are_checked() {
+    use At::{Field, Line};
+    check_cases(
+        GOOD_RECIPE,
+        &[
+            (
+                r#"explain = "Start {unit} now""#,
+                "explain = \"Start {unit} now\"\nrequires = { init = [\"sytemd\"] }",
+                Field("steps[1].requires.init"),
+                "'sytemd' is not one of",
+            ),
+            (
+                r#"["enable {unit}"]"#,
+                r#"["enable (the {unit}"]"#,
+                Line(4),
+                "unclosed '('",
+            ),
+            (
+                r#"["enable {unit}"]"#,
+                r#"["Enable {unit}"]"#,
+                Line(4),
+                "must be lowercase",
+            ),
+            (
+                r#"["enable {unit}"]"#,
+                r#"["enable {unit} and {unit}"]"#,
+                Field("patterns[0]"),
+                "{unit} appears twice",
+            ),
+        ],
+        recipe_errors,
+    );
+    // A profile fact constrained only by the step is usable in that step.
+    let ok = GOOD_RECIPE.replace(
+        r#"explain = "Start {unit} now""#,
+        "explain = \"Start {unit} now ({profile.init})\"\nrequires = { init = [\"systemd\"] }",
+    );
+    let r = parse_recipe(Path::new("t.toml"), &ok).unwrap();
+    let mut p = Problems::default();
+    r.validate(&mut p, &shipped().primitives);
     assert!(p.is_empty(), "{:?}", p.0);
 }

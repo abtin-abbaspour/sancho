@@ -2,6 +2,7 @@
 
 pub mod effect;
 pub mod load;
+pub mod pattern;
 pub mod plan;
 pub mod primitive;
 pub mod recipe;

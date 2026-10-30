@@ -1,0 +1,26 @@
+id = "user.add_to_group"
+version = 1
+summary = "Add a user (you, by default) to a group; takes effect at next login"
+domains = ["users"]
+patterns = [
+  "add {user} to (the )?{group}( group)?",
+  "(put|add) me in (the )?{group}( group)?",
+  "add me to (the )?{group}( group)?",
+  "make me (a )?member of (the )?{group}( group)?",
+  "give me {group} (group )?(access|permissions)",
+  "add {group} group to {user}",
+]
+risk = "high"
+notes = ["Groups such as wheel, docker or libvirt grant root-equivalent access."]
+
+[slots]
+user = { type = "user" }
+group = { type = "user_group" }
+
+[[steps]]
+primitive = "usermod.add_group"
+args = { group = "{group}", user = "{user}" }
+explain = "Add {user} to the {group} group (log out and back in for it to apply)"
+
+[tests]
+verified_by = "container"

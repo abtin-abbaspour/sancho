@@ -1,0 +1,23 @@
+id = "package.remove"
+version = 1
+summary = "Remove installed packages (their dependencies are kept)"
+domains = ["packages"]
+patterns = [
+  "(remove|uninstall|delete) {packages}",
+  "(remove|uninstall|delete) (the )?(package|packages|program|app|apps) {packages}",
+  "get rid of {packages}",
+  "i (want|need) to (remove|uninstall) {packages}",
+  "can you (remove|uninstall) {packages}",
+]
+risk = "medium"
+
+[slots]
+packages = { type = "package", multiple = true, filter = { installed = true } }
+
+[[steps]]
+primitive = "pacman.remove"
+args = { packages = "{packages}" }
+explain = "Remove {packages}"
+
+[tests]
+verified_by = "container"
