@@ -283,6 +283,77 @@ fn looking_without_changing_anything_writes_nothing() {
     assert!(created.is_empty(), "files appeared: {created:?}");
 }
 
+/// Runs a session (`sancho` with no request), feeding `input` as typed lines.
+fn session(dir: &std::path::Path, args: &[&str], input: &str) -> Output {
+    use std::io::Write;
+    let mut child = Command::new(BIN)
+        .args(args)
+        .env(
+            "SANCHO_DATA",
+            concat!(env!("CARGO_MANIFEST_DIR"), "/../../data"),
+        )
+        .env("XDG_DATA_HOME", dir.join("data"))
+        .env("XDG_STATE_HOME", dir.join("state"))
+        .stdin(std::process::Stdio::piped())
+        .stdout(std::process::Stdio::piped())
+        .stderr(std::process::Stdio::piped())
+        .spawn()
+        .expect("spawn sancho");
+    child
+        .stdin
+        .take()
+        .unwrap()
+        .write_all(input.as_bytes())
+        .unwrap();
+    child.wait_with_output().unwrap()
+}
+
+#[test]
+fn a_session_handles_several_lines_in_plain_language() {
+    let dir = home("session");
+    let fixture = fixture();
+    let out = session(
+        &dir,
+        &["--fixture", &fixture],
+        "restart sshd\nwhat does paccache -rk2 do?\nwhat did you do\nhelp\nshow my system\nmake me a sandwich\nexit\nrestart nginx\n",
+    );
+    assert!(out.status.success(), "{out:?}");
+    let stdout = String::from_utf8_lossy(&out.stdout);
+    assert!(
+        stdout.contains("$ sudo systemctl restart sshd.service"),
+        "{stdout}"
+    );
+    assert!(stdout.contains("Dry run: nothing was changed."));
+    assert!(stdout.contains("-k 2  Keep this many versions of each package"));
+    assert!(stdout.contains("Nothing has been done yet."));
+    assert!(stdout.contains("Tell me what you want done, in plain words."));
+    assert!(stdout.contains("distro        arch"));
+    assert!(!stdout.contains("nginx.service"), "nothing after exit runs");
+    let stderr = String::from_utf8_lossy(&out.stderr);
+    assert!(
+        stderr.contains("no recipe knows how to do that yet"),
+        "{stderr}"
+    );
+}
+
+#[test]
+fn a_session_never_runs_a_plan_without_a_terminal() {
+    // Even in a real (not --fixture) session, piped input can't confirm.
+    let dir = home("session_live");
+    let out = session(&dir, &[], "undo\nundo the keyboard thing\nforget 9\n");
+    assert!(out.status.success(), "{out:?}");
+    let stdout = String::from_utf8_lossy(&out.stdout);
+    assert!(stdout.contains("Nothing to undo."), "{stdout}");
+    let stderr = String::from_utf8_lossy(&out.stderr);
+    assert!(
+        stderr.contains("nothing in the history matches \"keyboard\""),
+        "{stderr}"
+    );
+    assert!(stderr.contains("nothing learned has ID 9"));
+    let created: Vec<_> = std::fs::read_dir(&dir).unwrap().flatten().collect();
+    assert!(created.is_empty(), "{created:?}");
+}
+
 /// Runs the binary as uid 0 inside an unprivileged user namespace
 /// (`unshare --map-root-user`). This grants no real privileges on the host.
 /// Returns `None` when user namespaces are unavailable.

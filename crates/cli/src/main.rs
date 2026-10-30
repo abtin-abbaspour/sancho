@@ -3,12 +3,13 @@
 mod ask;
 mod history;
 mod learned;
+mod session;
 
 use std::io::{self, IsTerminal};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
-use clap::{CommandFactory, Parser, Subcommand};
+use clap::{Parser, Subcommand};
 use sancho_core::{format_errors, FixtureSystem, Library, LiveSystem, System};
 use sancho_learn::Learned;
 use sancho_match::{interpret_with, Answers, Interpretation, Matcher};
@@ -16,7 +17,8 @@ use sancho_profile::detect;
 
 /// Turn plain-language requests into verified, reversible Arch Linux tasks.
 ///
-/// Example: sancho update my system
+/// Run `sancho` on its own to talk to it, or give a request directly:
+/// sancho update my system
 #[derive(Parser, Debug)]
 #[command(
     name = "sancho",
@@ -135,7 +137,7 @@ fn main() -> ExitCode {
 
     match cli.command {
         Some(Command::Profile) => {
-            print_profile();
+            print_profile(system(cli.fixture.as_deref()).as_ref());
             ExitCode::SUCCESS
         }
         Some(Command::History) => history::history(),
@@ -167,39 +169,55 @@ fn main() -> ExitCode {
             LearnedAction::Rm { id } => learned::remove(id),
             LearnedAction::Export { id, output } => learned::export(id, output),
         },
-        None if cli.request.is_empty() => {
-            let _ = Cli::command().print_help();
-            ExitCode::SUCCESS
-        }
-        None => run_request(&cli),
+        None if cli.request.is_empty() => match load_library() {
+            Ok(lib) => session::run(&lib, cli.fixture.as_deref(), cli.dry_run),
+            Err(code) => code,
+        },
+        None => match load_library() {
+            Ok(lib) => run_request(
+                &lib,
+                cli.fixture.as_deref(),
+                cli.dry_run,
+                &cli.request.join(" "),
+            ),
+            Err(code) => code,
+        },
     }
 }
 
 /// Exit code when sancho needs an answer but stdin is not a terminal.
 const NEEDS_ANSWER: u8 = 2;
 
-fn run_request(cli: &Cli) -> ExitCode {
-    let lib = match Library::load(&data_dir()) {
-        Ok(lib) => lib,
-        Err(e) => {
-            eprintln!(
-                "sancho: the recipe library failed to load:\n{}",
-                format_errors(&e)
-            );
-            return ExitCode::FAILURE;
-        }
-    };
-    let sys: Box<dyn System> = match &cli.fixture {
+/// The recipe library, or the reason it couldn't be loaded.
+fn load_library() -> Result<Library, ExitCode> {
+    Library::load(&data_dir()).map_err(|e| {
+        eprintln!(
+            "sancho: the recipe library failed to load:\n{}",
+            format_errors(&e)
+        );
+        ExitCode::FAILURE
+    })
+}
+
+/// The system to plan against: a fixture (tests), or this machine with each
+/// query cached for the length of one request only.
+fn system(fixture: Option<&Path>) -> Box<dyn System> {
+    match fixture {
         Some(dir) => Box::new(FixtureSystem::new(dir)),
         None => Box::new(sancho_core::Cached::new(LiveSystem)),
-    };
-    let dry_run = cli.dry_run || cli.fixture.is_some();
-    let mut text = cli.request.join(" ");
+    }
+}
+
+/// Handles one plain-language request: explain, ask, plan, confirm, run.
+fn run_request(lib: &Library, fixture: Option<&Path>, dry_run: bool, request: &str) -> ExitCode {
+    let sys = system(fixture);
+    let dry_run = dry_run || fixture.is_some();
+    let mut text = request.to_string();
     let is_program = |w: &str| {
         lib.commands.contains_key(w) || sancho_explain::man_summary(sys.as_ref(), w).is_some()
     };
     match sancho_explain::route(&text, is_program) {
-        sancho_explain::Route::Explain(what) => return explain_with(&lib, sys.as_ref(), &what),
+        sancho_explain::Route::Explain(what) => return explain_with(lib, sys.as_ref(), &what),
         sancho_explain::Route::HelpWith(what) => {
             let options = vec![
                 format!("Explain: what is \"{what}\"?"),
@@ -222,7 +240,7 @@ fn run_request(cli: &Cli) -> ExitCode {
                 "What kind of help?",
                 &options,
             ) {
-                Ok(Some(0)) => return explain_with(&lib, sys.as_ref(), &what),
+                Ok(Some(0)) => return explain_with(lib, sys.as_ref(), &what),
                 Ok(Some(1)) => text = what,
                 Ok(Some(_)) => {
                     println!("Fixing problems isn't available yet. Try describing what you want done, e.g. \"restart wifi\".");
@@ -237,7 +255,7 @@ fn run_request(cli: &Cli) -> ExitCode {
         sancho_explain::Route::Do => {}
     }
     let profile = detect(sys.as_ref());
-    let matcher = Matcher::new(&lib);
+    let matcher = Matcher::new(lib);
     let interactive = io::stdin().is_terminal();
     let mut answers = Answers::default();
     // Answers to earlier questions; without a store, sancho just asks.
@@ -256,7 +274,7 @@ fn run_request(cli: &Cli) -> ExitCode {
                     corrections,
                 } => {
                     let mut plan =
-                        match sancho_plan::build(&lib, &recipe, &values, &profile, sys.as_ref()) {
+                        match sancho_plan::build(lib, &recipe, &values, &profile, sys.as_ref()) {
                             Ok(p) => p,
                             Err(e) => {
                                 eprintln!("sancho: can't plan this: {e}");
@@ -270,6 +288,7 @@ fn run_request(cli: &Cli) -> ExitCode {
                     }
                     print!("{}", sancho_plan::render::plan(&plan));
                     if dry_run {
+                        println!("Dry run: nothing was changed.");
                         return ExitCode::SUCCESS;
                     }
                     if !interactive && plan.confirmation() != sancho_core::plan::Confirmation::None
@@ -548,8 +567,8 @@ fn data_dir() -> PathBuf {
     PathBuf::from(concat!(env!("CARGO_MANIFEST_DIR"), "/../../data"))
 }
 
-fn print_profile() {
-    let profile = detect(&LiveSystem);
+fn print_profile(sys: &dyn System) {
+    let profile = detect(sys);
     for (key, value) in profile.iter() {
         println!("{:<14}{value}", key.name());
     }
@@ -558,6 +577,7 @@ fn print_profile() {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use clap::CommandFactory;
 
     #[test]
     fn root_is_refused() {

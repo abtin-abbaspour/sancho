@@ -58,6 +58,17 @@ Clarification is decided by code, not a model (`sancho-match`):
 A plan therefore exists only when a full pattern matched and every slot resolved to
 exactly one system value; everything else is a question.
 
+### Sessions
+
+`sancho` with no arguments opens a conversation: each line is natural language. A small
+fixed set of phrasings reaches history and undo ("what did you do", "undo that", "undo
+the last 3", "undo the keyboard thing", "undo since 2h", "redo"), the profile ("show my
+system") and the learned store ("what have you learned", "forget 3"); everything else is a
+request or a question about a command. The library loads once per session; system queries
+are cached per request only, since a request can change the system. `--dry-run` makes it a
+practice session. Without a terminal, lines are read from stdin with no prompts, and
+confirmations are refused, so piped input can never run a plan.
+
 ### Plans and confirmation
 
 `sancho <request>` shows the plan: tier badge and recipe, risk, each step with its

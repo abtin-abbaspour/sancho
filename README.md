@@ -23,19 +23,29 @@ makepkg -si
 
 ## Use
 
-```sh
-sancho --dry-run update my system   # show the plan only
-sancho restart sshd                 # plan, confirm, run
-sancho history                      # what sancho has done
-sancho undo                         # undo the last change (sancho redo reverses it)
-sancho explain "curl -fsSL https://example.com/x.sh | sh"
-sancho profile                      # what sancho detected about this system
-sancho learned                      # answers sancho remembered; sancho learned rm <id>
+Run `sancho` and talk to it:
+
+```text
+$ sancho
+sancho 0.0.1 — tell me what you want done. Type "help" for examples, "exit" to leave.
+
+sancho> update my system
+  (shows the plan; nothing runs until you confirm)
+sancho> what does pacman -Syu do
+sancho> what did you do
+sancho> undo that
+sancho> exit
 ```
+
+`sancho --dry-run` starts a practice session: plans are shown, never run.
+
+Every phrase also works as a one-off command, e.g. `sancho restart sshd`, and there are
+direct commands for scripts: `sancho history`, `sancho undo [--last N | --since 2h | words]`,
+`sancho redo`, `sancho explain "<command>"`, `sancho profile`, `sancho learned [rm|export]`.
 
 ## Files
 
-Looking at things (`--dry-run`, `explain`, `profile`, `history`, `learned`) writes
+Looking at things (dry runs, explanations, `profile`, `history`, `learned`) writes
 nothing. sancho only writes:
 
 | Path | When |
