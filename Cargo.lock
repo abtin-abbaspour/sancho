@@ -147,7 +147,10 @@ dependencies = [
  "clap",
  "libc",
  "sancho-core",
+ "sancho-match",
+ "sancho-plan",
  "sancho-profile",
+ "sancho-resolve",
 ]
 
 [[package]]
@@ -197,6 +200,12 @@ dependencies = [
 [[package]]
 name = "sancho-plan"
 version = "0.0.1"
+dependencies = [
+ "sancho-core",
+ "sancho-match",
+ "sancho-profile",
+ "sancho-resolve",
+]
 
 [[package]]
 name = "sancho-profile"

@@ -1,0 +1,19 @@
+$ sancho update my system   # system: arch_iwd
+
+[verified recipe · system.update v1] Update all installed packages, including AUR packages, then trim the package cache
+Risk: HIGH — you will be asked to type "yes" to confirm
+
+  1. Upgrade all packages from the official repositories
+     $ sudo pacman -Syu
+     CANNOT be undone
+
+Skipped:
+  - Take a snapshot of the root filesystem with snapper (needs snapshot_tool snapper, this system has none)
+  - Take a system snapshot with Timeshift (needs snapshot_tool timeshift, this system has none)
+  - Upgrade packages installed from the AUR (runs as you; the helper asks for sudo itself) (needs aur_helper paru or yay, this system has none)
+  - Delete cached package files older than the newest 2 versions (`paccache` is not installed; it comes with pacman-contrib)
+
+Notes:
+  - Arch does not support downgrading single packages; without a snapshot an upgrade cannot be undone.
+
+Undo: some steps CANNOT be undone (see above)

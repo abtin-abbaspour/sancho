@@ -1,0 +1,10 @@
+$ sancho install gimp and obs-studio   # system: eval_desktop
+
+[verified recipe · package.install v1] Install packages from the official repositories
+Risk: medium — you will be asked to confirm
+
+  1. Install gimp and obs-studio
+     $ sudo pacman -S --needed gimp obs-studio
+     can be undone while the package files stay in the pacman cache
+
+Undo: `sancho undo` can reverse this while the package files stay in the cache

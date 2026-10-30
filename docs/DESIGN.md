@@ -58,6 +58,18 @@ Clarification is decided by code, not a model (`sancho-match`):
 A plan therefore exists only when a full pattern matched and every slot resolved to
 exactly one system value; everything else is a question.
 
+### Plans and confirmation
+
+`sancho <request>` shows the plan: tier badge and recipe, risk, each step with its
+templated explanation, the exact command (with `sudo` when it needs root), any stdin
+content (e.g. a file's full text), and per-step undo class; then steps left out and why,
+recipe notes, and typo corrections. Steps that are alternatives for another system
+variant (the iwd step on a NetworkManager system) are not listed as skipped.
+Confirmation: none when every step is read-only, `y/N` otherwise, typing `yes` for high
+risk. An upgrade counts as undoable only if the plan takes a snapshot first.
+`--dry-run` prints the plan and exits. Questions (which recipe, which value) are numbered
+choices; without a terminal sancho lists them and exits with status 2.
+
 ## 3. Tiers
 
 ### Data files

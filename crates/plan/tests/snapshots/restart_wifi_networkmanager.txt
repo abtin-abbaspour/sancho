@@ -1,0 +1,14 @@
+$ sancho restart my wifi   # system: eval_desktop
+
+[verified recipe · network.restart_wifi v1] Restart Wi-Fi (NetworkManager: radio off and on; iwd: restart the daemon)
+Risk: medium — you will be asked to confirm
+
+  1. Turn the Wi-Fi radio off
+     $ nmcli radio wifi off
+     can be undone
+
+  2. Turn the Wi-Fi radio back on
+     $ nmcli radio wifi on
+     can be undone
+
+Undo: every step can be undone with `sancho undo`

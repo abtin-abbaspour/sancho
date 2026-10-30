@@ -53,6 +53,62 @@ fn profile_lists_every_fact() {
     );
 }
 
+fn fixture() -> String {
+    concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../../eval/fixtures/systems/eval_desktop"
+    )
+    .to_string()
+}
+
+fn request(words: &[&str]) -> Output {
+    let fixture = fixture();
+    let mut args = vec!["--fixture", fixture.as_str()];
+    args.extend_from_slice(words);
+    run(&args)
+}
+
+#[test]
+fn a_request_prints_its_plan() {
+    let out = request(&["restart", "sshd"]);
+    assert!(out.status.success(), "{out:?}");
+    let stdout = String::from_utf8_lossy(&out.stdout);
+    assert!(
+        stdout.starts_with("[verified recipe · service.restart v1]"),
+        "{stdout}"
+    );
+    assert!(stdout.contains("$ sudo systemctl restart sshd.service"));
+}
+
+#[test]
+fn typo_corrections_are_shown() {
+    let out = request(&["restrat", "sshd"]);
+    let stdout = String::from_utf8_lossy(&out.stdout);
+    assert!(
+        stdout.contains("Read \"restrat\" as \"restart\"."),
+        "{stdout}"
+    );
+}
+
+#[test]
+fn questions_without_a_terminal_list_options_and_exit_2() {
+    let out = request(&["let", "my", "browser", "configure", "my", "keyboard"]);
+    assert_eq!(out.status.code(), Some(2));
+    let stdout = String::from_utf8_lossy(&out.stdout);
+    assert_eq!(stdout, "Which browser?\n  1) Brave\n  2) Chromium\n");
+}
+
+#[test]
+fn unsupported_requests_explain_and_exit_1() {
+    let out = request(&["make", "me", "a", "sandwich"]);
+    assert_eq!(out.status.code(), Some(1));
+    assert!(out.stdout.is_empty());
+    assert_eq!(
+        String::from_utf8_lossy(&out.stderr),
+        "sancho: no recipe knows how to do that yet\n"
+    );
+}
+
 /// Runs the binary as uid 0 inside an unprivileged user namespace
 /// (`unshare --map-root-user`). This grants no real privileges on the host.
 /// Returns `None` when user namespaces are unavailable.

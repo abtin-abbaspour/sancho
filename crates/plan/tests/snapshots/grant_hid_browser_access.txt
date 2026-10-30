@@ -1,0 +1,24 @@
+$ sancho let chromium configure my keyboard   # system: eval_desktop
+
+[verified recipe · device.grant_hid_browser_access v1] Let a Chromium-based browser access a HID device over WebHID (e.g. keyboard configurators like VIA)
+Risk: medium — you will be asked to confirm
+
+  1. Allow your login session to access Keychron Q2 (3434:0121) from browsers such as Chromium
+     $ sudo install -m 0644 /dev/stdin /etc/udev/rules.d/70-sancho-hid-3434-0121.rules
+     with this content:
+     | # Written by sancho: user-session access to Keychron Q2 for WebHID.
+     | KERNEL=="hidraw*", SUBSYSTEM=="hidraw", ATTRS{idVendor}=="3434", ATTRS{idProduct}=="0121", TAG+="uaccess"
+     can be undone
+
+  2. Reload device rules
+     $ sudo udevadm control --reload
+     nothing to undo
+
+  3. Apply the new rule to Keychron Q2 now
+     $ sudo udevadm trigger --action=change --subsystem-match hidraw
+     nothing to undo
+
+Notes:
+  - WebHID only works in Chromium-based browsers; Firefox cannot be used.
+
+Undo: every step can be undone with `sancho undo`

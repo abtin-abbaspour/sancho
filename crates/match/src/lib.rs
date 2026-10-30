@@ -154,6 +154,38 @@ impl<'a> Matcher<'a> {
         }
     }
 
+    /// The user's words for each slot of `recipe_id`, if one of its patterns
+    /// matches the request (e.g. after the user picked it from a tie);
+    /// otherwise none, and slots are resolved without a mention.
+    pub fn mentions_for(
+        &self,
+        text: &str,
+        recipe_id: &str,
+    ) -> (BTreeMap<String, String>, Vec<(String, String)>) {
+        let req = normalize(text, &self.lib.synonyms);
+        let mut found = self.pattern_matches(&req);
+        let mut corrections = Vec::new();
+        if !found.iter().any(|(id, _)| id == recipe_id) {
+            let (fixed, fixes) = correct(&req, &self.vocab);
+            found = self.pattern_matches(&fixed);
+            corrections = fixes;
+        }
+        match found.into_iter().find(|(id, _)| id == recipe_id) {
+            Some((_, m)) => (
+                m.captures
+                    .iter()
+                    .map(|(slot, s, e)| (slot.clone(), req.original_text(*s, *e)))
+                    .collect(),
+                corrections,
+            ),
+            None => (BTreeMap::new(), Vec::new()),
+        }
+    }
+
+    pub fn library(&self) -> &Library {
+        self.lib
+    }
+
     /// Best full match per recipe: (recipe id, match).
     fn pattern_matches(&self, req: &Request) -> Vec<(String, sancho_core::pattern::PatternMatch)> {
         let tokens = req.token_refs();
@@ -218,20 +250,55 @@ pub fn interpret(
     sys: &dyn System,
     text: &str,
 ) -> Interpretation {
-    let (id, mentions, corrections) = match matcher.match_request(text, profile) {
-        Intent::Recipe {
-            id,
-            mentions,
-            corrections,
-        } => (id, mentions, corrections),
-        Intent::Choose { options, suggested } => {
-            return Interpretation::ChooseRecipe { options, suggested }
+    interpret_with(matcher, profile, sys, text, &Answers::default())
+}
+
+/// The user's answers to earlier questions about the same request.
+#[derive(Debug, Clone, Default)]
+pub struct Answers {
+    /// The recipe the user picked.
+    pub recipe: Option<String>,
+    /// Values the user picked, by slot; these slots are not resolved again.
+    pub values: BTreeMap<String, Vec<Value>>,
+}
+
+/// Like [`interpret`], taking the user's answers to earlier questions into account.
+pub fn interpret_with(
+    matcher: &Matcher,
+    profile: &Profile,
+    sys: &dyn System,
+    text: &str,
+    answers: &Answers,
+) -> Interpretation {
+    let (id, mentions, corrections) = match &answers.recipe {
+        Some(id) => {
+            let (mentions, corrections) = matcher.mentions_for(text, id);
+            (id.clone(), mentions, corrections)
         }
-        Intent::Unsupported { reason } => return Interpretation::Unsupported { reason },
+        None => match matcher.match_request(text, profile) {
+            Intent::Recipe {
+                id,
+                mentions,
+                corrections,
+            } => (id, mentions, corrections),
+            Intent::Choose { options, suggested } => {
+                return Interpretation::ChooseRecipe { options, suggested }
+            }
+            Intent::Unsupported { reason } => return Interpretation::Unsupported { reason },
+        },
     };
-    let recipe: &Recipe = &matcher.lib.recipes[&id];
+    let Some(recipe) = matcher.lib.recipes.get(&id) else {
+        return Interpretation::Unsupported {
+            reason: format!("unknown recipe '{id}'"),
+        };
+    };
+    let recipe: &Recipe = recipe;
     let mut values = BTreeMap::new();
     for (slot_name, slot) in &recipe.slots {
+        if let Some(chosen) = answers.values.get(slot_name) {
+            values.insert(slot_name.clone(), chosen.clone());
+            continue;
+        }
         let mention = mentions.get(slot_name).map(String::as_str);
         let not_found = |reason: String| Interpretation::NotFound {
             recipe: id.clone(),

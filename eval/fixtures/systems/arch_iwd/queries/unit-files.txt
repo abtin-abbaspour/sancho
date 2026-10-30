@@ -1,0 +1,3 @@
+iwd.service                                enabled         disabled
+systemd-networkd.service                   enabled         enabled
+sshd.service                               disabled        disabled

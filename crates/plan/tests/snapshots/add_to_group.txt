@@ -1,0 +1,13 @@
+$ sancho add me to the video group   # system: eval_desktop
+
+[verified recipe · user.add_to_group v1] Add a user (you, by default) to a group; takes effect at next login
+Risk: HIGH — you will be asked to type "yes" to confirm
+
+  1. Add alice to the video group (log out and back in for it to apply)
+     $ sudo usermod -a -G video alice
+     can be undone
+
+Notes:
+  - Groups such as wheel, docker or libvirt grant root-equivalent access.
+
+Undo: every step can be undone with `sancho undo`

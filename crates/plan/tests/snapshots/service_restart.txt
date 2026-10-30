@@ -1,0 +1,10 @@
+$ sancho restart sshd   # system: eval_desktop
+
+[verified recipe · service.restart v1] Restart a systemd service
+Risk: medium — you will be asked to confirm
+
+  1. Restart sshd.service
+     $ sudo systemctl restart sshd.service
+     nothing to undo
+
+Undo: nothing to undo

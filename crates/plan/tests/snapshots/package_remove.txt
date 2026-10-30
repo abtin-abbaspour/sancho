@@ -1,0 +1,10 @@
+$ sancho remove vlc   # system: eval_desktop
+
+[verified recipe · package.remove v1] Remove installed packages (their dependencies are kept)
+Risk: medium — you will be asked to confirm
+
+  1. Remove vlc
+     $ sudo pacman -R vlc
+     can be undone while the package files stay in the pacman cache
+
+Undo: `sancho undo` can reverse this while the package files stay in the cache
