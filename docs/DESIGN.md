@@ -247,7 +247,12 @@ a reason ("needs init systemd, this system has openrc").
 
 - Refuse to run as root. Per-command `sudo` with the exact argv displayed.
 - argv only; no shell interpolation of slot values.
-- PTY passthrough so package-manager questions reach the user (no blanket `--noconfirm`).
+- Interactive commands (pacman, AUR helpers) inherit the terminal, so their questions and
+  sudo's password prompt reach the user directly (no blanket `--noconfirm`, no PTY layer).
+  Read-only steps also get the terminal so their output is shown. State queries capture
+  stdout with `LC_ALL=C` and discard stderr.
+- Executors: `SudoExecutor` (this machine; prepends `sudo --` for root steps),
+  `ContainerExecutor` (podman; tests), `MockExecutor` (simulated machine; tests).
 - Ctrl-C / timeout / failure: stop, mark the transaction, offer rollback of completed
   steps (all-or-nothing behaviour for multi-step recipes).
 - AUR helpers must run as the user, never via sudo.
@@ -280,8 +285,12 @@ guided rollback instructions; without snapshots, the plan states it cannot be un
 `paccache` cleanup can invalidate package undo; affected journal entries are re-marked.
 
 ### Storage
-`~/.local/state/sancho/journal/<tx_id>/manifest.json`; root-owned backups in
-`/var/lib/sancho/backups/` (root-only perms). Bounded by age and size.
+`$XDG_STATE_HOME/sancho/journal/<tx_id>/manifest.json` (default `~/.local/state`), rewritten
+atomically (temp file + rename) before and after every step, so a crash or failure always
+leaves a consistent record. IDs are `<unix seconds>-<n>` and sort chronologically. File
+backups are copied (`cp -a`, keeping mode and owner) to `/var/lib/sancho/backups/<tx_id>/`
+in a `0700` root-owned directory; the manifest stores only path, hash and mode. Pruning by
+age and size is not implemented yet.
 
 Manifest records: request text, tier, recipe id+version, resolved slots, per-step argv,
 exit code, effect, pre-state, post-state hash, reversibility class, plus a **human summary
@@ -295,6 +304,15 @@ and entity tags** (device names, services, packages, paths, domains) used by NL 
   device) are linked. Undoing T when a later transaction depends on it → offer
   [undo both] / [undo only T, with consequence] / [cancel]. Never cascade silently.
 - Mixed reversibility in a range → split the preview into "can undo" / "can't undo".
+- A step that was already in the target state (e.g. enabling an enabled service) has
+  identical before/after states, so its undo does nothing.
+- Package undo removes everything the change added, dependencies included, and the preview
+  names them; reinstalling removed packages needs their exact version in the pacman cache,
+  otherwise the preview says it can't be undone.
+
+CLI: `sancho history`; `sancho undo` (last), `sancho undo <id | words>` (select by ID, or by
+words in the request, summary and touched resources), `--last N`, `--since 30m|2h|3d|today`,
+`--step N` (partial), `--dry-run`; `sancho redo` undoes the latest undo.
 
 ### NL undo modes
 `last` ("undo", "reverse that") · `select` ("undo the keyboard thing") · `range`

@@ -1,0 +1,16 @@
+[package]
+name = "container-tests"
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+license.workspace = true
+
+# Integration tests that run the real executor inside podman containers.
+# Run with: cargo test -p container-tests -- --ignored (requires podman)
+
+[dependencies]
+
+[dev-dependencies]
+sancho-core.workspace = true
+sancho-exec.workspace = true
+sancho-journal.workspace = true

@@ -1,6 +1,7 @@
 //! The `sancho` binary.
 
 mod ask;
+mod history;
 
 use std::io::{self, IsTerminal};
 use std::path::PathBuf;
@@ -43,6 +44,34 @@ struct Cli {
 enum Command {
     /// Show what sancho detected about this system.
     Profile,
+    /// List what sancho has done.
+    History,
+    /// Undo the last change, or one you name.
+    ///
+    /// Examples: `sancho undo`, `sancho undo keyboard`, `sancho undo --last 3`,
+    /// `sancho undo --since 2h`, `sancho undo <id> --step 2`.
+    Undo {
+        /// A transaction ID or words from the request ("keyboard", "sshd").
+        what: Vec<String>,
+        /// Undo the last N changes.
+        #[arg(long, value_name = "N", conflicts_with_all = ["what", "since"])]
+        last: Option<usize>,
+        /// Undo everything since a time ago: 30m, 2h, 3d or today.
+        #[arg(long, value_name = "WHEN", conflicts_with = "what")]
+        since: Option<String>,
+        /// Undo only this step (1-based; repeatable).
+        #[arg(long = "step", value_name = "N")]
+        steps: Vec<usize>,
+        /// Show what would be undone and exit.
+        #[arg(long, short = 'n')]
+        dry_run: bool,
+    },
+    /// Undo the last undo.
+    Redo {
+        /// Show what would be redone and exit.
+        #[arg(long, short = 'n')]
+        dry_run: bool,
+    },
 }
 
 const ROOT_REFUSAL: &str = "sancho: refusing to run as root.\n\
@@ -78,6 +107,29 @@ fn main() -> ExitCode {
             print_profile();
             ExitCode::SUCCESS
         }
+        Some(Command::History) => history::history(),
+        Some(Command::Undo {
+            what,
+            last,
+            since,
+            steps,
+            dry_run,
+        }) => {
+            let target = match (last, since) {
+                (Some(n), _) => history::Target::Count(n),
+                (_, Some(s)) => match history::parse_since(&s) {
+                    Ok(secs) => history::Target::Since(secs),
+                    Err(e) => {
+                        eprintln!("sancho: {e}");
+                        return ExitCode::FAILURE;
+                    }
+                },
+                _ if what.is_empty() => history::Target::Last,
+                _ => history::Target::Search(what.join(" ")),
+            };
+            history::undo(target, &steps, dry_run)
+        }
+        Some(Command::Redo { dry_run }) => history::undo(history::Target::Redo, &[], dry_run),
         None if cli.request.is_empty() => {
             let _ = Cli::command().print_help();
             ExitCode::SUCCESS
@@ -112,78 +164,71 @@ fn run_request(cli: &Cli) -> ExitCode {
     let mut answers = Answers::default();
 
     loop {
-        let (question, labels, pick): (String, Vec<String>, Pick) = match interpret_with(
-            &matcher,
-            &profile,
-            sys.as_ref(),
-            &text,
-            &answers,
-        ) {
-            Interpretation::Ready {
-                recipe,
-                values,
-                corrections,
-            } => {
-                let mut plan =
-                    match sancho_plan::build(&lib, &recipe, &values, &profile, sys.as_ref()) {
-                        Ok(p) => p,
-                        Err(e) => {
-                            eprintln!("sancho: can't plan this: {e}");
-                            return ExitCode::FAILURE;
+        let (question, labels, pick): (String, Vec<String>, Pick) =
+            match interpret_with(&matcher, &profile, sys.as_ref(), &text, &answers) {
+                Interpretation::Ready {
+                    recipe,
+                    values,
+                    corrections,
+                } => {
+                    let mut plan =
+                        match sancho_plan::build(&lib, &recipe, &values, &profile, sys.as_ref()) {
+                            Ok(p) => p,
+                            Err(e) => {
+                                eprintln!("sancho: can't plan this: {e}");
+                                return ExitCode::FAILURE;
+                            }
+                        };
+                    for (typed, read) in corrections.iter().rev() {
+                        plan.notes
+                            .insert(0, format!("Read \"{typed}\" as \"{read}\"."));
+                    }
+                    print!("{}", sancho_plan::render::plan(&plan));
+                    if dry_run {
+                        return ExitCode::SUCCESS;
+                    }
+                    if !interactive && plan.confirmation() != sancho_core::plan::Confirmation::None
+                    {
+                        eprintln!("sancho: confirmation needs a terminal; nothing was changed.");
+                        return ExitCode::from(NEEDS_ANSWER);
+                    }
+                    let mut stdin = io::stdin().lock();
+                    return match ask::confirm(&mut stdin, &mut io::stdout(), plan.confirmation()) {
+                        Ok(true) => run_plan(&plan, &text),
+                        _ => {
+                            println!("Cancelled; nothing was changed.");
+                            ExitCode::SUCCESS
                         }
                     };
-                for (typed, read) in corrections.iter().rev() {
-                    plan.notes
-                        .insert(0, format!("Read \"{typed}\" as \"{read}\"."));
                 }
-                print!("{}", sancho_plan::render::plan(&plan));
-                if dry_run {
-                    return ExitCode::SUCCESS;
+                Interpretation::ChooseRecipe { options, suggested } => {
+                    let question = if suggested {
+                        "I'm not sure what you mean. Did you want to:"
+                    } else {
+                        "That could mean several things. Which one?"
+                    };
+                    let labels = options
+                        .iter()
+                        .map(|id| lib.recipes[id].summary.clone())
+                        .collect();
+                    (question.to_string(), labels, Pick::Recipe(options))
                 }
-                if !interactive && plan.confirmation() != sancho_core::plan::Confirmation::None {
-                    eprintln!("sancho: confirmation needs a terminal; nothing was changed.");
-                    return ExitCode::from(NEEDS_ANSWER);
+                Interpretation::ChooseValue {
+                    slot, candidates, ..
+                } => {
+                    let labels = candidates.iter().map(|c| c.value.display.clone()).collect();
+                    let values = candidates.into_iter().map(|c| c.value).collect();
+                    (format!("Which {slot}?"), labels, Pick::Value(slot, values))
                 }
-                let mut stdin = io::stdin().lock();
-                return match ask::confirm(&mut stdin, &mut io::stdout(), plan.confirmation()) {
-                    Ok(true) => {
-                        println!("Running plans is not available yet in this version; nothing was changed.");
-                        ExitCode::SUCCESS
-                    }
-                    _ => {
-                        println!("Cancelled; nothing was changed.");
-                        ExitCode::SUCCESS
-                    }
-                };
-            }
-            Interpretation::ChooseRecipe { options, suggested } => {
-                let question = if suggested {
-                    "I'm not sure what you mean. Did you want to:"
-                } else {
-                    "That could mean several things. Which one?"
-                };
-                let labels = options
-                    .iter()
-                    .map(|id| lib.recipes[id].summary.clone())
-                    .collect();
-                (question.to_string(), labels, Pick::Recipe(options))
-            }
-            Interpretation::ChooseValue {
-                slot, candidates, ..
-            } => {
-                let labels = candidates.iter().map(|c| c.value.display.clone()).collect();
-                let values = candidates.into_iter().map(|c| c.value).collect();
-                (format!("Which {slot}?"), labels, Pick::Value(slot, values))
-            }
-            Interpretation::NotFound { reason, .. } => {
-                eprintln!("sancho: {reason}");
-                return ExitCode::FAILURE;
-            }
-            Interpretation::Unsupported { reason } => {
-                eprintln!("sancho: {reason}");
-                return ExitCode::FAILURE;
-            }
-        };
+                Interpretation::NotFound { reason, .. } => {
+                    eprintln!("sancho: {reason}");
+                    return ExitCode::FAILURE;
+                }
+                Interpretation::Unsupported { reason } => {
+                    eprintln!("sancho: {reason}");
+                    return ExitCode::FAILURE;
+                }
+            };
         if !interactive {
             println!("{question}");
             for (i, l) in labels.iter().enumerate() {
@@ -218,6 +263,73 @@ impl Pick {
                     .values
                     .insert(slot, values.into_iter().skip(i).take(1).collect());
             }
+        }
+    }
+}
+
+/// Runs a confirmed plan through the journal; offers rollback on failure.
+fn run_plan(plan: &sancho_core::Plan, request: &str) -> ExitCode {
+    use sancho_journal::{apply_undo, execute, plan_undo, RunOutcome};
+
+    let journal = match history::journal() {
+        Ok(j) => j,
+        Err(e) => {
+            eprintln!("sancho: {e}");
+            return ExitCode::FAILURE;
+        }
+    };
+    let mut ex = sancho_exec::SudoExecutor;
+    let total = plan.steps.len();
+    let mut progress = |i: usize| println!("[{}/{total}] {}", i + 1, plan.steps[i].explanation);
+    match execute(&journal, &mut ex, plan, request, &mut progress) {
+        Ok(RunOutcome::Completed { tx }) => {
+            if plan.steps.iter().any(|s| !s.read_only) {
+                println!("Done. `sancho undo` reverses this ({tx}).");
+            }
+            ExitCode::SUCCESS
+        }
+        Ok(RunOutcome::Failed { tx, step, exit }) => {
+            println!(
+                "Step {} failed (exit {exit}); later steps did not run.",
+                step + 1
+            );
+            if step == 0 {
+                return ExitCode::FAILURE;
+            }
+            let undo = match plan_undo(&journal, &mut ex, std::slice::from_ref(&tx), None) {
+                Ok(u) => u,
+                Err(e) => {
+                    eprintln!("sancho: {e}");
+                    return ExitCode::FAILURE;
+                }
+            };
+            if undo.actions.iter().all(|a| a.restores.is_empty()) {
+                return ExitCode::FAILURE;
+            }
+            print!("Roll back the {step} completed step(s)? [y/N] ");
+            let _ = io::Write::flush(&mut io::stdout());
+            let yes = ask::confirm(
+                &mut io::stdin().lock(),
+                &mut io::sink(),
+                sancho_core::plan::Confirmation::YesNo,
+            )
+            .unwrap_or(false);
+            if yes {
+                match apply_undo(&journal, &mut ex, &undo, &format!("roll back {tx}"), false) {
+                    Ok(RunOutcome::Completed { .. }) => println!("Rolled back."),
+                    Ok(RunOutcome::Failed { step, .. }) => {
+                        println!("Rollback step {} failed; see `sancho history`.", step + 1)
+                    }
+                    Err(e) => eprintln!("sancho: {e}"),
+                }
+            } else {
+                println!("Left as is; `sancho undo` can roll it back later.");
+            }
+            ExitCode::FAILURE
+        }
+        Err(e) => {
+            eprintln!("sancho: {e}");
+            ExitCode::FAILURE
         }
     }
 }
