@@ -249,6 +249,40 @@ fn a_learned_value_that_no_longer_exists_is_ignored() {
     assert_eq!(out.status.code(), Some(2), "asks again: {out:?}");
 }
 
+#[test]
+fn looking_without_changing_anything_writes_nothing() {
+    let dir = home("no_clutter");
+    let fixture = fixture();
+    let runs: &[&[&str]] = &[
+        &["profile"],
+        &["explain", "sudo pacman -Syu"],
+        &["history"],
+        &["learned"],
+        &["undo", "--dry-run"],
+        &["--fixture", &fixture, "restart", "sshd"],
+        &[
+            "--fixture",
+            &fixture,
+            "let",
+            "my",
+            "browser",
+            "configure",
+            "my",
+            "keyboard",
+        ],
+        &["--fixture", &fixture, "make", "me", "a", "sandwich"],
+    ];
+    for args in runs {
+        run_in(&dir, args);
+    }
+    let created: Vec<_> = std::fs::read_dir(&dir)
+        .unwrap()
+        .flatten()
+        .map(|e| e.path())
+        .collect();
+    assert!(created.is_empty(), "files appeared: {created:?}");
+}
+
 /// Runs the binary as uid 0 inside an unprivileged user namespace
 /// (`unshare --map-root-user`). This grants no real privileges on the host.
 /// Returns `None` when user namespaces are unavailable.

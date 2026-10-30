@@ -21,6 +21,7 @@ optdepends=(
 makedepends=('cargo' 'git')
 # tree-sitter's bundled C code can't be linked into Rust as GCC LTO bytecode.
 options=('!lto')
+install=sancho.install
 source=("$pkgname::git+$url#tag=v$pkgver")
 sha256sums=('SKIP')
 
@@ -50,5 +51,8 @@ package() {
   install -d "$pkgdir/usr/share/sancho"
   cp -r --no-preserve=ownership data "$pkgdir/usr/share/sancho/"
   install -Dm0644 -t "$pkgdir/usr/share/licenses/$pkgname/" LICENSE-MIT LICENSE-APACHE
-  install -Dm0644 -t "$pkgdir/usr/share/doc/$pkgname/" docs/DESIGN.md
+  install -Dm0644 -t "$pkgdir/usr/share/doc/$pkgname/" README.md docs/DESIGN.md
+  # Owned by the package so `pacman -Qo` names it and removal tidies it when
+  # empty; backups inside are created at run time, root-only.
+  install -dm0700 "$pkgdir/var/lib/sancho"
 }

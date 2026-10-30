@@ -3,7 +3,7 @@
 
 pkgname=sancho-git
 _pkgname=sancho
-pkgver=0.0.1.r12.g05fd60a
+pkgver=0.0.1.r13.g292e383
 pkgrel=1
 pkgdesc="Plain-language Arch Linux tasks from verified recipes, with previews, a journal and undo (development version)"
 arch=('x86_64' 'aarch64')
@@ -21,6 +21,7 @@ optdepends=(
 makedepends=('cargo' 'git')
 # tree-sitter's bundled C code can't be linked into Rust as GCC LTO bytecode.
 options=('!lto')
+install=sancho.install
 provides=("$_pkgname")
 conflicts=("$_pkgname")
 source=("$_pkgname::git+$url.git#branch=main")
@@ -59,5 +60,8 @@ package() {
   install -d "$pkgdir/usr/share/sancho"
   cp -r --no-preserve=ownership data "$pkgdir/usr/share/sancho/"
   install -Dm0644 -t "$pkgdir/usr/share/licenses/$pkgname/" LICENSE-MIT LICENSE-APACHE
-  install -Dm0644 -t "$pkgdir/usr/share/doc/$pkgname/" docs/DESIGN.md
+  install -Dm0644 -t "$pkgdir/usr/share/doc/$pkgname/" README.md docs/DESIGN.md
+  # Owned by the package so `pacman -Qo` names it and removal tidies it when
+  # empty; backups inside are created at run time, root-only.
+  install -dm0700 "$pkgdir/var/lib/sancho"
 }

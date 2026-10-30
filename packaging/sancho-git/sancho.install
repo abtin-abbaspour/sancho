@@ -1,0 +1,17 @@
+# pacman install hooks for sancho and sancho-git: messages only.
+# sancho never deletes backups on its own: they may hold the only copy of a
+# file it replaced.
+
+post_remove() {
+  cat <<'MSG'
+==> sancho was removed. It may have left these behind (they are yours to keep or delete):
+      /var/lib/sancho/backups/      root-only copies of files sancho replaced
+      ~/.local/state/sancho/        the journal behind `sancho history` and `sancho undo`
+      ~/.local/share/sancho/        answers sancho learned (`sancho learned`)
+    Changes sancho made (enabled services, udev rules, packages) stay in place;
+    to revert them, reinstall and run `sancho undo` before removing.
+    To delete everything:
+      sudo rm -r /var/lib/sancho
+      rm -r ~/.local/state/sancho ~/.local/share/sancho
+MSG
+}
