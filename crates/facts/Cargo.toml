@@ -1,0 +1,10 @@
+[package]
+name = "sancho-facts"
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+license.workspace = true
+
+[dependencies]
+sancho-core.workspace = true
+sancho-resolve.workspace = true

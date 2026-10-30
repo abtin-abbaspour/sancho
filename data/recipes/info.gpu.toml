@@ -1,0 +1,17 @@
+id = "info.gpu"
+version = 1
+summary = "Show the graphics card (GPU), its vendor, model and driver"
+domains = ["hardware"]
+patterns = [
+  "(what|which|what's) (is )?(my |the )?(gpu|graphics card|video card|graphics) ...",
+  "(what|which) (gpu|graphics card|video card|graphics) (do i have|is this) ...",
+  "(is|are) (my |the )?(gpu|graphics card|video card|graphics) ...",
+  "(show|check|tell me|find out) (my |the )?(gpu|graphics card|video card|graphics driver|graphics) ...",
+  "(which|what) (graphics|gpu|video) driver ..."
+]
+risk = "low"
+answer = "gpu"
+
+[tests]
+verified_by = "mock"
+reason = "Reads /sys, /proc and /etc; covered by fixture tests in sancho-facts"

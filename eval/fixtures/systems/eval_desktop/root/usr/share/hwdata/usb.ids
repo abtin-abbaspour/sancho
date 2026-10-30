@@ -1,0 +1,3 @@
+# Subset of hwdata usb.ids for tests
+0bda  Realtek Semiconductor Corp.
+	8153  RTL8153 Gigabit Ethernet Adapter

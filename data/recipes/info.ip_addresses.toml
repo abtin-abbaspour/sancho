@@ -1,0 +1,15 @@
+id = "info.ip_addresses"
+version = 1
+summary = "Show this computer's IP addresses on the local network"
+domains = ["network"]
+patterns = [
+  "(what|what's) (is )?(my |the )?(ip|ip address|ip addresses|local ip|ipv4|ipv6|ipv4 address|ipv6 address|address on the network) ...",
+  "(show|list|tell me|check|find) (my |the )?(ip|ip address|ip addresses|local ip) ...",
+  "(which|what) ip (do i have|am i using|is this) ..."
+]
+risk = "low"
+answer = "ip_addresses"
+
+[tests]
+verified_by = "mock"
+reason = "Reads /sys, /proc and /etc; covered by fixture tests in sancho-facts"

@@ -1,0 +1,17 @@
+id = "info.memory"
+version = 1
+summary = "Show how much memory (RAM) there is and how much is available"
+domains = ["hardware"]
+patterns = [
+  "how much (ram|memory) ...",
+  "(what|what's) (is )?(my |the )?(ram|memory) ...",
+  "(show|check|tell me) (my |the )?(ram|memory) ...",
+  "(is|am) (my )?(ram|memory) (full|low|running out) ...",
+  "(ram|memory) (usage|size|info) ..."
+]
+risk = "low"
+answer = "memory"
+
+[tests]
+verified_by = "mock"
+reason = "Reads /sys, /proc and /etc; covered by fixture tests in sancho-facts"

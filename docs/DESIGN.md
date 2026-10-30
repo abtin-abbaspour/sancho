@@ -50,7 +50,11 @@ Clarification is decided by code, not a model (`sancho-match`):
    matching is retried. Corrections are shown to the user. Slot values always come from
    the words as typed, never corrected ones.
 4. **Search:** if still nothing matched, BM25 over recipe summaries, domains and pattern
-   words produces up to three *suggestions*. Search never produces a plan by itself.
+   words produces up to three *suggestions*, offered together with programs on this
+   system whose man pages (`man -k`, sections 1 and 8) mention the request's words; picking
+   a program explains it. When no recipe is even close, the related programs are still
+   offered; only with nothing related at all is the answer "no recipe knows how to do
+   that yet". Search never produces a plan by itself.
 5. **Slots:** captured words go to the resolvers (§4). One value → selected; several →
    the user picks; none → the user is told what wasn't found. Lists ("vlc, gimp and obs")
    split on commas and "and"; a run of exact names ("vim git htop") is also accepted.
@@ -158,6 +162,17 @@ Steps may declare their own `requires` (profile facts, same form as the recipe's
 whose requirements don't hold is left out, and the plan says so — e.g. "take a snapshot"
 only with `snapshot_tool = ["snapper"]`. `optional = true` skips a step, with a note,
 when its command isn't installed (e.g. `paccache` from `pacman-contrib`).
+
+### Answer recipes
+A recipe may have `answer = "<kind>"` instead of steps: it answers a question about the
+system ("is my wifi card intel or realtek?", "how much ram do I have?", "is sshd
+running?") from facts read directly — `/sys`, `/proc`, `/etc`, hwdata's `pci.ids`/`usb.ids`
+for vendor and model names, and read-only queries (`ip -o addr show`, `systemctl show`).
+Nothing runs that changes anything, so there is no plan or confirmation, and the risk is
+always low. Answer kinds (crate `sancho-facts`): network devices, CPU, GPU, memory, kernel,
+OS, hostname, battery, IP addresses, your groups, a package's version, a service's status.
+Questions trail off ("…realtek or intel"), so only answer recipes may end a pattern with
+`...`, which accepts any remaining words. Missing information is reported, never guessed.
 
 ### Tier 2 — command primitives (MVP: schemas used by recipes and `explain`; standalone
 generation is post-MVP)

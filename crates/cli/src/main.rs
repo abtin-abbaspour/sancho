@@ -275,6 +275,30 @@ fn run_request(lib: &Library, fixture: Option<&Path>, dry_run: bool, request: &s
                     values,
                     corrections,
                 } => {
+                    // A question about the system: read and answer, nothing runs.
+                    if let Some(kind) = lib.recipes[&recipe].answer {
+                        let value = kind
+                            .slot()
+                            .and_then(|(name, _)| values.get(name))
+                            .and_then(|v| v.first());
+                        let fact = sancho_facts::answer(sys.as_ref(), kind, value);
+                        print!(
+                            "{}",
+                            sancho_facts::render(
+                                &fact,
+                                sancho_core::style::stdout_painter().as_ref()
+                            )
+                        );
+                        for (typed, read) in &corrections {
+                            ui::info(&format!("Read \"{typed}\" as \"{read}\"."));
+                        }
+                        for (id, what) in &used_learned {
+                            ui::info(&format!(
+                                "Learned: {what} (forget it: sancho learned rm {id})"
+                            ));
+                        }
+                        return ExitCode::SUCCESS;
+                    }
                     let mut plan =
                         match sancho_plan::build(lib, &recipe, &values, &profile, sys.as_ref()) {
                             Ok(p) => p,
@@ -337,15 +361,21 @@ fn run_request(lib: &Library, fixture: Option<&Path>, dry_run: bool, request: &s
                         continue;
                     }
                     let question = if suggested {
-                        "I'm not sure what you mean. Did you want to:"
+                        "I'm not sure what you mean. Closest things I can do:"
                     } else {
                         "That could mean several things. Which one?"
                     };
-                    let labels = options
-                        .iter()
-                        .map(|id| lib.recipes[id].summary.clone())
-                        .collect();
-                    (question.to_string(), labels, Pick::Recipe(options))
+                    let mut opts: Vec<Opt> = options.into_iter().map(Opt::Recipe).collect();
+                    if suggested {
+                        // Also point at programs on this system that look related.
+                        opts.extend(
+                            sancho_facts::related::related_programs(sys.as_ref(), &text, 3)
+                                .into_iter()
+                                .map(|r| Opt::Explain(r.program, r.description)),
+                        );
+                    }
+                    let labels = opts.iter().map(|o| o.label(lib)).collect();
+                    (question.to_string(), labels, Pick::Options(opts))
                 }
                 Interpretation::ChooseValue {
                     recipe,
@@ -392,8 +422,22 @@ fn run_request(lib: &Library, fixture: Option<&Path>, dry_run: bool, request: &s
                     return ExitCode::FAILURE;
                 }
                 Interpretation::Unsupported { reason } => {
-                    ui::fail(&reason);
-                    return ExitCode::FAILURE;
+                    let related = sancho_facts::related::related_programs(sys.as_ref(), &text, 5);
+                    if related.is_empty() {
+                        ui::fail(&reason);
+                        return ExitCode::FAILURE;
+                    }
+                    ui::info(&reason);
+                    let opts: Vec<Opt> = related
+                        .into_iter()
+                        .map(|r| Opt::Explain(r.program, r.description))
+                        .collect();
+                    let labels = opts.iter().map(|o| o.label(lib)).collect();
+                    (
+                        "These programs on your system look related. Explain one?".to_string(),
+                        labels,
+                        Pick::Options(opts),
+                    )
                 }
             };
         if !interactive {
@@ -415,6 +459,9 @@ fn run_request(lib: &Library, fixture: Option<&Path>, dry_run: bool, request: &s
             &labels,
         ) {
             Ok(Some(i)) => {
+                if let Some(program) = pick.explains(i) {
+                    return explain_with(lib, sys.as_ref(), &program);
+                }
                 if let (Some(s), Some(learned)) = (store.as_mut(), pick.learning(i, &phrase)) {
                     let what = sancho_learn::Item {
                         id: 0,
@@ -441,7 +488,7 @@ fn run_request(lib: &Library, fixture: Option<&Path>, dry_run: bool, request: &s
 
 /// What the options in a question stand for.
 enum Pick {
-    Recipe(Vec<String>),
+    Options(Vec<Opt>),
     Value {
         recipe: String,
         slot: String,
@@ -451,14 +498,44 @@ enum Pick {
     },
 }
 
+/// One option offered when sancho isn't sure.
+enum Opt {
+    Recipe(String),
+    /// A related program (name, man page description) to explain.
+    Explain(String, String),
+}
+
+impl Opt {
+    fn label(&self, lib: &Library) -> String {
+        match self {
+            Opt::Recipe(id) => lib.recipes[id].summary.clone(),
+            Opt::Explain(program, description) => format!("Explain `{program}`: {description}"),
+        }
+    }
+}
+
 impl Pick {
+    /// The program to explain, if option `i` is one.
+    fn explains(&self, i: usize) -> Option<String> {
+        match self {
+            Pick::Options(opts) => match opts.get(i)? {
+                Opt::Explain(program, _) => Some(program.clone()),
+                Opt::Recipe(_) => None,
+            },
+            Pick::Value { .. } => None,
+        }
+    }
+
     /// What to remember about picking option `i`.
     fn learning(&self, i: usize, phrase: &str) -> Option<Learned> {
         match self {
-            Pick::Recipe(ids) => Some(Learned::Alias {
-                phrase: phrase.to_string(),
-                recipe: ids.get(i)?.clone(),
-            }),
+            Pick::Options(opts) => match opts.get(i)? {
+                Opt::Recipe(id) => Some(Learned::Alias {
+                    phrase: phrase.to_string(),
+                    recipe: id.clone(),
+                }),
+                Opt::Explain(..) => None,
+            },
             Pick::Value {
                 recipe,
                 slot,
@@ -479,7 +556,11 @@ impl Pick {
 
     fn apply(self, i: usize, answers: &mut Answers) {
         match self {
-            Pick::Recipe(ids) => answers.recipe = ids.into_iter().nth(i),
+            Pick::Options(opts) => {
+                if let Some(Opt::Recipe(id)) = opts.into_iter().nth(i) {
+                    answers.recipe = Some(id);
+                }
+            }
             Pick::Value { slot, values, .. } => {
                 answers
                     .values

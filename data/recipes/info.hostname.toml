@@ -1,0 +1,14 @@
+id = "info.hostname"
+version = 1
+summary = "Show this computer's hostname"
+domains = ["system", "network"]
+patterns = [
+  "(what|what's) (is )?(my |the |this )?(hostname|host name|computer name|computer's name|machine name|machine's name) ...",
+  "(show|tell me) (my |the )?(hostname|host name|computer name|machine name) ..."
+]
+risk = "low"
+answer = "hostname"
+
+[tests]
+verified_by = "mock"
+reason = "Reads /sys, /proc and /etc; covered by fixture tests in sancho-facts"

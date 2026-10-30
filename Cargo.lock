@@ -322,6 +322,7 @@ dependencies = [
  "sancho-core",
  "sancho-exec",
  "sancho-explain",
+ "sancho-facts",
  "sancho-journal",
  "sancho-learn",
  "sancho-match",
@@ -360,6 +361,14 @@ dependencies = [
  "sancho-core",
  "tree-sitter",
  "tree-sitter-bash",
+]
+
+[[package]]
+name = "sancho-facts"
+version = "0.0.1"
+dependencies = [
+ "sancho-core",
+ "sancho-resolve",
 ]
 
 [[package]]

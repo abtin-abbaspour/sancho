@@ -764,3 +764,238 @@ expect = "clarify"
 [[case]]
 request = "upgrade my kernel only"
 expect = "clarify"
+
+# Questions about the system (answer recipes)
+
+[[case]]
+request = "find out if my wifi card is realtek or intel"
+expect = "info.network_devices"
+
+[[case]]
+request = "what wifi card do i have"
+expect = "info.network_devices"
+
+[[case]]
+request = "which network adapter is this"
+expect = "info.network_devices"
+
+[[case]]
+request = "is my wifi chip intel"
+expect = "info.network_devices"
+
+[[case]]
+request = "what ethernet controller do i have"
+expect = "info.network_devices"
+
+[[case]]
+request = "list my network adapters"
+expect = "info.network_devices"
+
+[[case]]
+request = "what driver does my wifi use"
+expect = "info.network_devices"
+
+[[case]]
+request = "who makes my wifi card"
+expect = "info.network_devices"
+
+[[case]]
+request = "what's my wireless card"
+expect = "info.network_devices"
+
+[[case]]
+request = "what cpu do i have"
+expect = "info.cpu"
+
+[[case]]
+request = "how many cores do i have"
+expect = "info.cpu"
+
+[[case]]
+request = "what's my processor"
+expect = "info.cpu"
+
+[[case]]
+request = "show my cpu"
+expect = "info.cpu"
+
+[[case]]
+request = "cpu model"
+expect = "info.cpu"
+
+[[case]]
+request = "what graphics card do i have"
+expect = "info.gpu"
+
+[[case]]
+request = "what gpu is this"
+expect = "info.gpu"
+
+[[case]]
+request = "which graphics driver am i using"
+expect = "info.gpu"
+
+[[case]]
+request = "is my gpu nvidia or amd"
+expect = "info.gpu"
+
+[[case]]
+request = "show my graphics card"
+expect = "info.gpu"
+
+[[case]]
+request = "how much ram do i have"
+expect = "info.memory"
+
+[[case]]
+request = "how much memory is free"
+expect = "info.memory"
+
+[[case]]
+request = "what's my memory"
+expect = "info.memory"
+
+[[case]]
+request = "is my ram full"
+expect = "info.memory"
+
+[[case]]
+request = "show my memory"
+expect = "info.memory"
+
+[[case]]
+request = "what kernel am i running"
+expect = "info.kernel"
+
+[[case]]
+request = "what's my kernel version"
+expect = "info.kernel"
+
+[[case]]
+request = "kernel version"
+expect = "info.kernel"
+
+[[case]]
+request = "which kernel is this"
+expect = "info.kernel"
+
+[[case]]
+request = "what distro is this"
+expect = "info.os"
+
+[[case]]
+request = "which os am i running"
+expect = "info.os"
+
+[[case]]
+request = "what operating system is this"
+expect = "info.os"
+
+[[case]]
+request = "what linux version do i have"
+expect = "info.os"
+
+[[case]]
+request = "what's my hostname"
+expect = "info.hostname"
+
+[[case]]
+request = "what is the computer name"
+expect = "info.hostname"
+
+[[case]]
+request = "show my hostname"
+expect = "info.hostname"
+
+[[case]]
+request = "how much battery do i have"
+expect = "info.battery"
+
+[[case]]
+request = "battery level"
+expect = "info.battery"
+
+[[case]]
+request = "is my laptop charging"
+expect = "info.battery"
+
+[[case]]
+request = "what's my battery at"
+expect = "info.battery"
+
+[[case]]
+request = "what is my ip"
+expect = "info.ip_addresses"
+
+[[case]]
+request = "what's my ip address"
+expect = "info.ip_addresses"
+
+[[case]]
+request = "show my ip addresses"
+expect = "info.ip_addresses"
+
+[[case]]
+request = "what is my local ip"
+expect = "info.ip_addresses"
+
+[[case]]
+request = "what groups am i in"
+expect = "info.my_groups"
+
+[[case]]
+request = "which groups do i belong to"
+expect = "info.my_groups"
+
+[[case]]
+request = "show my groups"
+expect = "info.my_groups"
+
+[[case]]
+request = "am i in the docker group"
+expect = "info.my_groups"
+
+[[case]]
+request = "is firefox installed"
+expect = "info.package_version"
+slots = { package = "firefox" }
+
+[[case]]
+request = "what version of vlc do i have"
+expect = "info.package_version"
+slots = { package = "vlc" }
+
+[[case]]
+request = "do i have gimp installed"
+expect = "info.package_version"
+slots = { package = "gimp" }
+
+[[case]]
+request = "git version"
+expect = "info.package_version"
+slots = { package = "git" }
+
+[[case]]
+request = "is sshd running"
+expect = "info.service_status"
+slots = { unit = "sshd.service" }
+
+[[case]]
+request = "is bluetooth enabled"
+expect = "info.service_status"
+slots = { unit = "bluetooth.service" }
+
+[[case]]
+request = "check the nginx service"
+expect = "info.service_status"
+slots = { unit = "nginx.service" }
+
+[[case]]
+request = "what's the status of docker"
+expect = "info.service_status"
+slots = { unit = "docker.service" }
+
+[[case]]
+request = "does sshd start at boot"
+expect = "info.service_status"
+slots = { unit = "sshd.service" }

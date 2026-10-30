@@ -111,7 +111,13 @@ fn every_starter_recipe_has_a_snapshot() {
         .iter()
         .map(|(_, sys, req)| plan_for(&lib, sys, req).unwrap().recipe_id.unwrap())
         .collect();
-    let all: std::collections::BTreeSet<String> = lib.recipes.keys().cloned().collect();
+    // Answer recipes don't plan anything; sancho-facts tests cover them.
+    let all: std::collections::BTreeSet<String> = lib
+        .recipes
+        .iter()
+        .filter(|(_, r)| r.answer.is_none())
+        .map(|(id, _)| id.clone())
+        .collect();
     assert_eq!(covered, all);
 }
 

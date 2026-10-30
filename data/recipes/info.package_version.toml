@@ -1,0 +1,21 @@
+id = "info.package_version"
+version = 1
+summary = "Show whether a package is installed and which version"
+domains = ["packages"]
+patterns = [
+  "(what|which) version of {package} (is installed|do i have|have i got|is this)",
+  "(what|which) version of {package}",
+  "is {package} installed",
+  "(do i have|have i got) {package}( installed)?",
+  "(check|find out) (if|whether) {package} is installed",
+  "{package} version",
+]
+risk = "low"
+answer = "package_version"
+
+[slots]
+package = { type = "package" }
+
+[tests]
+verified_by = "mock"
+reason = "Reads pacman's package lists; covered by fixture tests"

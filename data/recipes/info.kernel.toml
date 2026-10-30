@@ -1,0 +1,16 @@
+id = "info.kernel"
+version = 1
+summary = "Show the running Linux kernel version"
+domains = ["system"]
+patterns = [
+  "(what|which|what's) (is )?(my |the )?(kernel|linux kernel) ...",
+  "(what|which) kernel (version )?(am i|is|do i) ...",
+  "(show|check|tell me) (my |the )?kernel (version)? ...",
+  "kernel version ..."
+]
+risk = "low"
+answer = "kernel"
+
+[tests]
+verified_by = "mock"
+reason = "Reads /sys, /proc and /etc; covered by fixture tests in sancho-facts"

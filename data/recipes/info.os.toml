@@ -1,0 +1,15 @@
+id = "info.os"
+version = 1
+summary = "Show which Linux distribution and kernel this is"
+domains = ["system"]
+patterns = [
+  "(what|which|what's) (is )?(my |the |this )?(os|distro|distribution|operating system|linux version|version of linux) ...",
+  "(what|which) (os|distro|distribution|operating system|linux) (am i|is this|do i) ...",
+  "(show|check|tell me) (my |the )?(os|distro|distribution|operating system) ..."
+]
+risk = "low"
+answer = "os"
+
+[tests]
+verified_by = "mock"
+reason = "Reads /sys, /proc and /etc; covered by fixture tests in sancho-facts"

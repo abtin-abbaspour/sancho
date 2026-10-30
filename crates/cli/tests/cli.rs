@@ -377,6 +377,34 @@ fn colour_is_used_only_when_asked_for_or_on_a_terminal() {
     assert!(stdout.contains("\x1b[36msudo systemctl restart sshd.service\x1b[0m"));
 }
 
+#[test]
+fn questions_about_the_system_are_answered_without_a_plan() {
+    let out = request(&[
+        "find", "out", "if", "my", "wifi", "card", "is", "realtek", "or", "intel",
+    ]);
+    assert!(out.status.success(), "{out:?}");
+    let stdout = String::from_utf8_lossy(&out.stdout);
+    assert!(stdout.starts_with("Network devices\n"), "{stdout}");
+    assert!(stdout.contains("wlan0 (Wi-Fi)   Intel Corporation Wi-Fi 6E"));
+    assert!(!stdout.contains("Risk:"), "answers have no plan");
+}
+
+#[test]
+fn unknown_requests_offer_related_programs_from_man_pages() {
+    let out = request(&["pair", "my", "bluetooth", "speaker"]);
+    assert_eq!(out.status.code(), Some(2), "{out:?}");
+    let stdout = String::from_utf8_lossy(&out.stdout);
+    assert!(
+        stdout.contains("Explain `bluetoothctl`: Bluetooth Control Command Line Tool"),
+        "{stdout}"
+    );
+    assert!(stdout.contains("Explain `btmon`: Bluetooth monitor"));
+    assert!(
+        !stdout.contains("bluetooth.conf"),
+        "only programs (sections 1 and 8)"
+    );
+}
+
 /// Runs the binary as uid 0 inside an unprivileged user namespace
 /// (`unshare --map-root-user`). This grants no real privileges on the host.
 /// Returns `None` when user namespaces are unavailable.

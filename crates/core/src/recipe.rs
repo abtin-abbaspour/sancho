@@ -25,7 +25,13 @@ pub struct Recipe {
     #[serde(default)]
     pub requires: BTreeMap<ProfileKey, Vec<String>>,
     pub risk: Risk,
+    /// What to run. A recipe has either steps or an `answer`.
+    #[serde(default)]
     pub steps: Vec<Step>,
+    /// Instead of steps: answer a question about the system from facts sancho
+    /// reads itself (nothing runs, nothing changes).
+    #[serde(default)]
+    pub answer: Option<Answer>,
     #[serde(default)]
     pub notes: Vec<String>,
     pub tests: TestDecl,
@@ -152,6 +158,35 @@ pub struct Step {
     pub optional: bool,
 }
 
+/// Questions sancho answers by reading the system (crate `sancho-facts`).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum Answer {
+    NetworkDevices,
+    Cpu,
+    Gpu,
+    Memory,
+    Kernel,
+    Os,
+    Hostname,
+    Battery,
+    IpAddresses,
+    MyGroups,
+    PackageVersion,
+    ServiceStatus,
+}
+
+impl Answer {
+    /// The one slot this answer needs, if any: (name, type).
+    pub fn slot(self) -> Option<(&'static str, ValueType)> {
+        match self {
+            Answer::PackageVersion => Some(("package", ValueType::Package)),
+            Answer::ServiceStatus => Some(("unit", ValueType::SystemdUnit)),
+            _ => None,
+        }
+    }
+}
+
 #[derive(Debug, Clone, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct TestDecl {
@@ -218,8 +253,20 @@ impl Recipe {
 
         check_requires(p, "requires", &self.requires);
 
+        if let Some(answer) = self.answer {
+            self.validate_answer(p, answer);
+            return self.validate_tests(p);
+        }
+        for (i, pat) in self.patterns.iter().enumerate() {
+            if pat.has_rest() {
+                p.push(
+                    format!("patterns[{i}]"),
+                    "`...` is only allowed in answer recipes (it would accept any trailing words)",
+                );
+            }
+        }
         if self.steps.is_empty() {
-            p.push("steps", "at least one step is required");
+            p.push("steps", "at least one step is required (or an answer)");
         }
         let mut used = BTreeSet::new();
         for (i, step) in self.steps.iter().enumerate() {
@@ -230,7 +277,29 @@ impl Recipe {
                 p.push(format!("slots.{name}"), "slot is never used by any step");
             }
         }
+        self.validate_tests(p);
+    }
 
+    fn validate_answer(&self, p: &mut Problems, answer: Answer) {
+        if !self.steps.is_empty() {
+            p.push("answer", "a recipe has either steps or an answer, not both");
+        }
+        if self.risk != Risk::Low {
+            p.push("risk", "answer recipes only read, so their risk is low");
+        }
+        let expected: Vec<(&str, ValueType)> = answer.slot().into_iter().collect();
+        let actual: Vec<(&str, ValueType)> =
+            self.slots.iter().map(|(n, s)| (n.as_str(), s.ty)).collect();
+        if actual != expected {
+            let want = match answer.slot() {
+                Some((n, t)) => format!("exactly one slot `{n}` of type {t}"),
+                None => "no slots".into(),
+            };
+            p.push("slots", format!("this answer needs {want}"));
+        }
+    }
+
+    fn validate_tests(&self, p: &mut Problems) {
         if self.tests.verified_by != Verification::Container
             && self
                 .tests

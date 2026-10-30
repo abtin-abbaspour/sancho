@@ -1,0 +1,3 @@
+bluetoothctl (1)     - Bluetooth Control Command Line Tool
+btmon (1)            - Bluetooth monitor
+bluetooth.conf (5)   - Bluetooth daemon configuration

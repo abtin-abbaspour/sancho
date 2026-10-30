@@ -84,6 +84,18 @@ fn shipped_data_loads() {
     let recipes = [
         "device.grant_hid_browser_access",
         "disk.usage",
+        "info.battery",
+        "info.cpu",
+        "info.gpu",
+        "info.hostname",
+        "info.ip_addresses",
+        "info.kernel",
+        "info.memory",
+        "info.my_groups",
+        "info.network_devices",
+        "info.os",
+        "info.package_version",
+        "info.service_status",
         "network.restart_wifi",
         "package.install",
         "package.remove",
@@ -651,4 +663,58 @@ fn step_requirements_and_patterns_are_checked() {
     let mut p = Problems::default();
     r.validate(&mut p, &shipped().primitives);
     assert!(p.is_empty(), "{:?}", p.0);
+}
+
+#[test]
+fn answer_recipes_are_checked() {
+    const ANSWER: &str = r#"id = "info.cpu"
+version = 1
+summary = "Show the CPU"
+patterns = ["what cpu ..."]
+risk = "low"
+answer = "cpu"
+tests = { verified_by = "mock", reason = "fixture tests" }
+"#;
+    let lib = shipped();
+    let ok = parse_recipe(Path::new("t.toml"), ANSWER).unwrap();
+    let mut p = Problems::default();
+    ok.validate(&mut p, &lib.primitives);
+    assert!(p.is_empty(), "{:?}", p.0);
+
+    use At::Field;
+    check_cases(
+        ANSWER,
+        &[
+            (
+                r#"risk = "low""#,
+                r#"risk = "medium""#,
+                Field("risk"),
+                "answer recipes only read",
+            ),
+            (
+                r#"answer = "cpu""#,
+                "answer = \"package_version\"",
+                Field("slots"),
+                "exactly one slot `package` of type package",
+            ),
+            (
+                r#"tests = { verified_by = "mock", reason = "fixture tests" }"#,
+                "tests = { verified_by = \"mock\", reason = \"fixture tests\" }\n[[steps]]\nprimitive = \"df.show\"\nexplain = \"x\"",
+                Field("answer"),
+                "either steps or an answer",
+            ),
+        ],
+        recipe_errors,
+    );
+    // `...` would let an action recipe accept arbitrary trailing words.
+    check_cases(
+        GOOD_RECIPE,
+        &[(
+            r#"["enable {unit}"]"#,
+            r#"["enable {unit} ..."]"#,
+            Field("patterns[0]"),
+            "only allowed in answer recipes",
+        )],
+        recipe_errors,
+    );
 }

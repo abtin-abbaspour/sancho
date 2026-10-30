@@ -1,0 +1,16 @@
+id = "info.my_groups"
+version = 1
+summary = "Show which groups your user is in"
+domains = ["users"]
+patterns = [
+  "(what|which) groups (am i in|am i a member of|do i belong to|is my user in|have i got) ...",
+  "(show|list|tell me) (my |the )?groups ...",
+  "(am i|is my user) (in|a member of) ...",
+  "my groups ..."
+]
+risk = "low"
+answer = "my_groups"
+
+[tests]
+verified_by = "mock"
+reason = "Reads /sys, /proc and /etc; covered by fixture tests in sancho-facts"

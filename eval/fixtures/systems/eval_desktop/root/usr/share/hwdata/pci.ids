@@ -1,0 +1,7 @@
+# Subset of hwdata pci.ids for tests
+1002  Advanced Micro Devices, Inc. [AMD/ATI]
+	73bf  Navi 21 [Radeon RX 6800/6800 XT / 6900 XT]
+10ec  Realtek Semiconductor Co., Ltd.
+	8125  RTL8125 2.5GbE Controller
+8086  Intel Corporation
+	2725  Wi-Fi 6E(802.11ax) AX210/AX1675* 2x2 [Typhoon Peak]

@@ -3,7 +3,9 @@
 //! Grammar, over whitespace-separated tokens:
 //! - a word matches that exact (normalized) token;
 //! - `{slot}` captures one or more tokens;
-//! - `(a b|c)` matches one alternative; `(...)?` may also match nothing.
+//! - `(a b|c)` matches one alternative; `(...)?` may also match nothing;
+//! - a final `...` matches any remaining words (answer recipes only, where
+//!   questions often trail off: "is my wifi card intel or realtek").
 
 use std::fmt;
 
@@ -19,6 +21,8 @@ pub enum Elem {
         alts: Vec<Vec<Elem>>,
         optional: bool,
     },
+    /// `...`: any remaining words, including none.
+    Rest,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -60,7 +64,7 @@ impl Pattern {
                 match e {
                     Elem::Slot(s) => out.push(s),
                     Elem::Group { alts, .. } => alts.iter().for_each(|a| walk(a, out)),
-                    Elem::Word(_) => {}
+                    Elem::Word(_) | Elem::Rest => {}
                 }
             }
         }
@@ -76,13 +80,18 @@ impl Pattern {
                 match e {
                     Elem::Word(w) => out.push(w),
                     Elem::Group { alts, .. } => alts.iter().for_each(|a| walk(a, out)),
-                    Elem::Slot(_) => {}
+                    Elem::Slot(_) | Elem::Rest => {}
                 }
             }
         }
         let mut out = Vec::new();
         walk(&self.elems, &mut out);
         out
+    }
+
+    /// Ends with `...` (matches trailing words).
+    pub fn has_rest(&self) -> bool {
+        self.elems.last() == Some(&Elem::Rest)
     }
 
     /// All ways the whole token list matches, most specific first.
@@ -140,6 +149,13 @@ fn match_seq(elems: &[Elem], tokens: &[&str], pos: usize) -> Vec<(usize, Pattern
                 ));
             }
         }
+        Elem::Rest => heads.push((
+            tokens.len().max(pos),
+            PatternMatch {
+                captures: vec![],
+                literals: 0,
+            },
+        )),
         Elem::Group { alts, optional } => {
             for alt in alts {
                 heads.extend(match_seq(alt, tokens, pos));
@@ -178,6 +194,13 @@ fn parse_seq(chars: &[char], pos: &mut usize, depth: usize) -> Result<Vec<Elem>,
         match chars[*pos] {
             c if c.is_whitespace() => *pos += 1,
             ')' | '|' if depth > 0 => break,
+            '.' if chars[*pos..].starts_with(&['.', '.', '.']) => {
+                *pos += 3;
+                if depth > 0 || chars[*pos..].iter().any(|c| !c.is_whitespace()) {
+                    return Err("`...` may only come last, outside groups".into());
+                }
+                elems.push(Elem::Rest);
+            }
             '(' => {
                 *pos += 1;
                 let mut alts = vec![parse_seq(chars, pos, depth + 1)?];
@@ -330,6 +353,21 @@ mod tests {
         ] {
             let e = Pattern::parse(bad).unwrap_err();
             assert!(e.contains(why), "{bad:?}: {e}");
+        }
+    }
+
+    #[test]
+    fn trailing_rest_matches_any_words() {
+        let p = "(is|are) my (wifi|wireless) (card|chip) ...";
+        assert!(caps(p, "is my wifi card realtek or intel").is_some());
+        assert!(caps(p, "is my wifi card").is_some());
+        assert!(caps(p, "is my bluetooth card intel").is_none());
+        assert!(Pattern::parse(p).unwrap().has_rest());
+        for bad in ["... my wifi", "(wifi ...)", "a ... b"] {
+            assert!(
+                Pattern::parse(bad).unwrap_err().contains("only come last"),
+                "{bad}"
+            );
         }
     }
 

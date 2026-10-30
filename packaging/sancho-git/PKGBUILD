@@ -11,6 +11,7 @@ url="https://github.com/abtin-abbaspour/sancho"
 license=('MIT OR Apache-2.0')
 depends=('gcc-libs' 'glibc' 'pacman' 'sudo' 'systemd')
 optdepends=(
+  'hwdata: vendor and model names when answering questions about hardware'
   'man-db: one-line summaries for programs sancho has no notes on'
   'networkmanager: Wi-Fi recipes'
   'iwd: Wi-Fi recipes'

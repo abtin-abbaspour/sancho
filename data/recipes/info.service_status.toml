@@ -1,0 +1,21 @@
+id = "info.service_status"
+version = 1
+summary = "Show whether a service is running and whether it starts at boot"
+domains = ["services"]
+patterns = [
+  "is (the )?{unit}( service| daemon)? (running|active|started|up|on|enabled|working)",
+  "(is|does) (the )?{unit}( service| daemon)? (start|run) (at|on) (boot|startup)",
+  "(status of|check|check on) (the )?{unit}( service| daemon)?",
+  "(what's|what is) the status of (the )?{unit}( service| daemon)?",
+  "{unit} status",
+]
+risk = "low"
+answer = "service_status"
+requires = { init = ["systemd"] }
+
+[slots]
+unit = { type = "systemd_unit" }
+
+[tests]
+verified_by = "mock"
+reason = "Reads systemctl's view of a unit (read-only); covered by fixture tests"

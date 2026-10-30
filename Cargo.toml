@@ -18,3 +18,4 @@ sancho-exec = { path = "crates/exec" }
 sancho-journal = { path = "crates/journal" }
 sancho-explain = { path = "crates/explain" }
 sancho-learn = { path = "crates/learn" }
+sancho-facts = { path = "crates/facts" }

@@ -1,0 +1,16 @@
+id = "info.battery"
+version = 1
+summary = "Show the battery level and whether it is charging"
+domains = ["hardware", "power"]
+patterns = [
+  "(how much|what's|what is|show|check) (my |the )?battery ...",
+  "battery (level|status|percentage|charge|life) ...",
+  "(is|am) (my |the |i )?(battery|laptop) (charging|full|low|plugged in) ...",
+  "how much (charge|power) ..."
+]
+risk = "low"
+answer = "battery"
+
+[tests]
+verified_by = "mock"
+reason = "Reads /sys, /proc and /etc; covered by fixture tests in sancho-facts"

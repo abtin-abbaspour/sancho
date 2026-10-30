@@ -28,6 +28,12 @@ pub enum Query {
     ManSummary(String),
     /// Saved NetworkManager connections: `name:type` per line.
     NmConnections,
+    /// Addresses of every interface, one per line (`ip -o addr show`).
+    IpAddresses,
+    /// A unit's description, state and boot setting (`systemctl show`).
+    UnitStatus(String),
+    /// Man pages whose name or description mention a word (`man -k`).
+    ManSearch(String),
 }
 
 impl Query {
@@ -51,6 +57,22 @@ impl Query {
                 return vec!["man".into(), "-f".into(), "--".into(), name.clone()]
             }
             Query::NmConnections => &["nmcli", "-t", "-f", "NAME,TYPE", "connection", "show"],
+            Query::IpAddresses => &["ip", "-o", "addr", "show"],
+            Query::ManSearch(word) => {
+                return vec!["man".into(), "-k".into(), "--".into(), word.clone()]
+            }
+            Query::UnitStatus(unit) => {
+                return [
+                    "systemctl",
+                    "show",
+                    "--property=Description,ActiveState,SubState,UnitFileState,LoadState",
+                    "--",
+                    unit,
+                ]
+                .iter()
+                .map(|s| s.to_string())
+                .collect()
+            }
         };
         fixed.iter().map(|s| s.to_string()).collect()
     }
@@ -65,6 +87,9 @@ impl Query {
             Query::SyncPackages => "sync-packages.txt".into(),
             Query::ManSummary(name) => format!("man-f-{name}.txt"),
             Query::NmConnections => "nm-connections.txt".into(),
+            Query::IpAddresses => "ip-addresses.txt".into(),
+            Query::ManSearch(word) => format!("man-k-{word}.txt"),
+            Query::UnitStatus(unit) => format!("unit-status-{unit}.txt"),
         }
     }
 
@@ -73,6 +98,8 @@ impl Query {
     pub fn no_match_status(&self) -> Option<i32> {
         match self {
             Query::UnitFiles(Some(_)) => Some(1),
+            // man -k exits 16 when nothing matches.
+            Query::ManSearch(_) => Some(16),
             _ => None,
         }
     }
@@ -81,6 +108,8 @@ impl Query {
     fn is_safe(&self) -> bool {
         match self {
             Query::ManSummary(name) => crate::value::safe_token(name, "._+-", 64),
+            Query::UnitStatus(unit) => crate::value::valid_unit(unit),
+            Query::ManSearch(word) => crate::value::safe_token(word, "-", 32),
             Query::UnitFiles(Some(p)) => {
                 let inner = p.trim_start_matches('*').trim_end_matches('*');
                 crate::value::safe_token(inner, ":_.-@\\", 255)

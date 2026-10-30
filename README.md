@@ -31,6 +31,7 @@ sancho 0.0.1 — tell me what you want done. Type "help" for examples, "exit" to
 
 sancho> update my system
   (shows the plan; nothing runs until you confirm)
+sancho> is my wifi card realtek or intel
 sancho> what does pacman -Syu do
 sancho> what did you do
 sancho> undo that

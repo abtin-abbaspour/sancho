@@ -1,0 +1,17 @@
+id = "info.cpu"
+version = 1
+summary = "Show the processor model and how many threads it has"
+domains = ["hardware"]
+patterns = [
+  "(what|which|what's) (is )?(my |the )?(cpu|processor) ...",
+  "(what|which) (cpu|processor) (do i have|is this|is in this) ...",
+  "how many (cores|threads|cpus|processors) ...",
+  "(show|check|tell me|find out) (my |the )?(cpu|processor) ...",
+  "(cpu|processor) (model|info|information|details) ..."
+]
+risk = "low"
+answer = "cpu"
+
+[tests]
+verified_by = "mock"
+reason = "Reads /sys, /proc and /etc; covered by fixture tests in sancho-facts"

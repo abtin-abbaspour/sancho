@@ -1,0 +1,18 @@
+id = "info.network_devices"
+version = 1
+summary = "Show network hardware: Wi-Fi and Ethernet adapters, their vendor, model and driver"
+domains = ["network", "hardware"]
+patterns = [
+  "(what|which) (wifi|wi-fi|wireless|network|ethernet|lan|wlan) (card|cards|chip|chipset|adapter|adapters|device|devices|controller|interface|interfaces|hardware|nic) ...",
+  "(what|which|what's) (is |are )?(my |the )?(wifi|wi-fi|wireless|network|ethernet|lan|wlan) (card|cards|chip|chipset|adapter|adapters|device|devices|controller|interface|interfaces|hardware|nic) ...",
+  "(is|are) (my |the )?(wifi|wi-fi|wireless|network|ethernet|lan|wlan) (card|cards|chip|chipset|adapter|adapters|device|devices|controller|interface|interfaces|hardware|nic) ...",
+  "(find out|check|show me|tell me|show|list|identify) (if |whether |what |which )?(my |the )?(wifi|wi-fi|wireless|network|ethernet|lan|wlan) (card|cards|chip|chipset|adapter|adapters|device|devices|controller|interface|interfaces|hardware|nic) ...",
+  "(what|which) (driver|drivers|kernel driver) (does|is|are) (my |the )?(wifi|wi-fi|wireless|network|ethernet|lan|wlan) ...",
+  "(who makes|who made) (my |the )?(wifi|wi-fi|wireless|network|ethernet|lan|wlan) (card|cards|chip|chipset|adapter|adapters|device|devices|controller|interface|interfaces|hardware|nic) ..."
+]
+risk = "low"
+answer = "network_devices"
+
+[tests]
+verified_by = "mock"
+reason = "Reads /sys, /proc and /etc; covered by fixture tests in sancho-facts"
