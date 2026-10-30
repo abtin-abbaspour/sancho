@@ -3,7 +3,7 @@ version = 1
 summary = "Restart Wi-Fi (NetworkManager: radio off and on; iwd: restart the daemon)"
 domains = ["network"]
 patterns = [
-  "(restart|reset|reconnect|reboot) (my |the )?(wifi|wireless|wlan)( connection| adapter| network)?",
+  "(restart|reset|reconnect|reboot) (my |the )?(wifi|wireless|wlan)( connection| adapter| network| daemon| service)?",
   "turn (my |the )?(wifi|wireless) off and (back )?on( again)?",
   "(cycle|bounce) (my |the )?(wifi|wireless)",
 ]

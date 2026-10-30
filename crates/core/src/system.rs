@@ -68,6 +68,15 @@ impl Query {
         }
     }
 
+    /// The exit status meaning "ran fine, found nothing" rather than failure:
+    /// `systemctl list-unit-files <pattern>` exits 1 when no unit matches.
+    pub fn no_match_status(&self) -> Option<i32> {
+        match self {
+            Query::UnitFiles(Some(_)) => Some(1),
+            _ => None,
+        }
+    }
+
     /// Arguments that come from outside (program names) must be plain tokens.
     fn is_safe(&self) -> bool {
         match self {
@@ -257,9 +266,8 @@ impl System for LiveSystem {
             std::thread::sleep(Duration::from_millis(5));
         };
         let out = reader.join().ok()?.ok()?;
-        status
-            .success()
-            .then(|| String::from_utf8_lossy(&out).into_owned())
+        let no_matches = status.code() == q.no_match_status() && out.is_empty();
+        (status.success() || no_matches).then(|| String::from_utf8_lossy(&out).into_owned())
     }
 }
 

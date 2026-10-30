@@ -530,6 +530,22 @@ expect = "unsupported"
 system = "artix_openrc"
 
 [[case]]
+request = "restart the wifi daemon"
+expect = "network.restart_wifi"
+
+[[case]]
+request = "restart the wifi service"
+expect = "network.restart_wifi"
+
+[[case]]
+request = "reset my wireless service"
+expect = "network.restart_wifi"
+
+[[case]]
+request = "restart the frobnicator daemon"
+expect = "clarify"
+
+[[case]]
 request = "fix my wifi"
 expect = "clarify"
 
