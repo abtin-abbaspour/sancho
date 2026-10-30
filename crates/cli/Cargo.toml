@@ -18,6 +18,7 @@ sancho-core.workspace = true
 sancho-exec.workspace = true
 sancho-explain.workspace = true
 sancho-journal.workspace = true
+sancho-learn.workspace = true
 sancho-match.workspace = true
 sancho-plan.workspace = true
 sancho-profile.workspace = true

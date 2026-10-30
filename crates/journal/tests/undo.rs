@@ -60,6 +60,7 @@ fn plan(steps: Vec<PlanStep>) -> Plan {
         steps,
         skipped: vec![],
         notes: vec![],
+        learned: vec![],
     }
 }
 

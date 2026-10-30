@@ -261,6 +261,7 @@ pub fn build(
         steps,
         skipped,
         notes: recipe.notes.clone(),
+        learned: vec![],
     })
 }
 

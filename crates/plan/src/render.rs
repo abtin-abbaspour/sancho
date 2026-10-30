@@ -38,6 +38,13 @@ pub fn plan(p: &Plan) -> String {
         }
         out.push('\n');
     }
+    if !p.learned.is_empty() {
+        out.push_str("Learned from your earlier answers:\n");
+        for (id, what) in &p.learned {
+            let _ = writeln!(out, "  - {what} (forget it: sancho learned rm {id})");
+        }
+        out.push('\n');
+    }
     if !p.notes.is_empty() {
         out.push_str("Notes:\n");
         for n in &p.notes {

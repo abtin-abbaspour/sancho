@@ -253,6 +253,7 @@ dependencies = [
  "sancho-exec",
  "sancho-explain",
  "sancho-journal",
+ "sancho-learn",
  "sancho-match",
  "sancho-plan",
  "sancho-profile",
@@ -304,6 +305,10 @@ dependencies = [
 [[package]]
 name = "sancho-learn"
 version = "0.0.1"
+dependencies = [
+ "serde",
+ "serde_json",
+]
 
 [[package]]
 name = "sancho-match"

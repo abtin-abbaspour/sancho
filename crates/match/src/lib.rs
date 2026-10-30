@@ -182,6 +182,12 @@ impl<'a> Matcher<'a> {
         }
     }
 
+    /// The request as matching sees it (normalized words), for remembering
+    /// answers to questions about it.
+    pub fn phrase(&self, text: &str) -> String {
+        normalize(text, &self.lib.synonyms).tokens.join(" ")
+    }
+
     pub fn library(&self) -> &Library {
         self.lib
     }

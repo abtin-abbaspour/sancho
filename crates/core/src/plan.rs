@@ -27,6 +27,8 @@ pub struct Plan {
     pub skipped: Vec<SkippedStep>,
     /// Recipe notes and interpretation notes (e.g. typo corrections).
     pub notes: Vec<String>,
+    /// Answers taken from the learned store instead of asking, with their IDs.
+    pub learned: Vec<(u32, String)>,
 }
 
 #[derive(Debug, Clone, Serialize)]

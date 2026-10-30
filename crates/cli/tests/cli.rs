@@ -4,8 +4,31 @@ use std::process::{Command, Output};
 
 const BIN: &str = env!("CARGO_BIN_EXE_sancho");
 
+/// Data and state directories for one test, so tests never touch the
+/// user's real learned store or journal.
+fn home(name: &str) -> std::path::PathBuf {
+    let dir = std::path::Path::new(env!("CARGO_TARGET_TMPDIR"))
+        .join("cli-home")
+        .join(name);
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(&dir).unwrap();
+    dir
+}
+
+fn run_in(dir: &std::path::Path, args: &[&str]) -> Output {
+    Command::new(BIN)
+        .args(args)
+        .env("XDG_DATA_HOME", dir.join("data"))
+        .env("XDG_STATE_HOME", dir.join("state"))
+        .output()
+        .expect("spawn sancho")
+}
+
 fn run(args: &[&str]) -> Output {
-    Command::new(BIN).args(args).output().expect("spawn sancho")
+    // Shared by tests that only read: created, never cleared.
+    let dir = std::path::Path::new(env!("CARGO_TARGET_TMPDIR")).join("cli-home/shared");
+    std::fs::create_dir_all(&dir).unwrap();
+    run_in(&dir, args)
 }
 
 #[test]
@@ -135,6 +158,89 @@ fn natural_language_explain_and_help_routing() {
     let out = request(&["help", "me", "with", "sshd"]);
     assert_eq!(out.status.code(), Some(2));
     assert!(String::from_utf8_lossy(&out.stdout).starts_with("What kind of help?\n"));
+}
+
+fn seed_preference(dir: &std::path::Path, key: &str) {
+    let store = dir.join("data/sancho");
+    std::fs::create_dir_all(&store).unwrap();
+    std::fs::write(
+        store.join("learned.json"),
+        format!(
+            r#"{{"next_id": 7, "items": [{{"id": 7, "kind": "preference",
+                "recipe": "device.grant_hid_browser_access", "slot": "browser",
+                "mention": "my browser", "key": "{key}", "display": "Chromium", "uses": 0}}]}}"#
+        ),
+    )
+    .unwrap();
+}
+
+#[test]
+fn a_learned_answer_skips_the_question_and_is_labeled() {
+    let dir = home("learned");
+    seed_preference(&dir, "chromium.desktop");
+    let fixture = fixture();
+    let out = run_in(
+        &dir,
+        &[
+            "--fixture",
+            &fixture,
+            "let",
+            "my",
+            "browser",
+            "configure",
+            "my",
+            "keyboard",
+        ],
+    );
+    assert!(out.status.success(), "{out:?}");
+    let stdout = String::from_utf8_lossy(&out.stdout);
+    assert!(
+        stdout.contains("Learned from your earlier answers:"),
+        "{stdout}"
+    );
+    assert!(stdout.contains("(forget it: sancho learned rm 7)"));
+    assert!(stdout.contains("from browsers such as Chromium"));
+
+    let listed = String::from_utf8_lossy(&run_in(&dir, &["learned"]).stdout).to_string();
+    assert!(listed.contains("   7  for device.grant_hid_browser_access, browser with \"my browser\" means Chromium  (used 1 times)"), "{listed}");
+    assert!(run_in(&dir, &["learned", "rm", "7"]).status.success());
+    assert!(!run_in(&dir, &["learned", "rm", "7"]).status.success());
+    // Forgotten: the question comes back.
+    let out = run_in(
+        &dir,
+        &[
+            "--fixture",
+            &fixture,
+            "let",
+            "my",
+            "browser",
+            "configure",
+            "my",
+            "keyboard",
+        ],
+    );
+    assert_eq!(out.status.code(), Some(2));
+}
+
+#[test]
+fn a_learned_value_that_no_longer_exists_is_ignored() {
+    let dir = home("stale");
+    seed_preference(&dir, "vivaldi.desktop");
+    let fixture = fixture();
+    let out = run_in(
+        &dir,
+        &[
+            "--fixture",
+            &fixture,
+            "let",
+            "my",
+            "browser",
+            "configure",
+            "my",
+            "keyboard",
+        ],
+    );
+    assert_eq!(out.status.code(), Some(2), "asks again: {out:?}");
 }
 
 /// Runs the binary as uid 0 inside an unprivileged user namespace

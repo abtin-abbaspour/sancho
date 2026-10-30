@@ -2,6 +2,7 @@
 
 mod ask;
 mod history;
+mod learned;
 
 use std::io::{self, IsTerminal};
 use std::path::PathBuf;
@@ -9,6 +10,7 @@ use std::process::ExitCode;
 
 use clap::{CommandFactory, Parser, Subcommand};
 use sancho_core::{format_errors, FixtureSystem, Library, LiveSystem, System};
+use sancho_learn::Learned;
 use sancho_match::{interpret_with, Answers, Interpretation, Matcher};
 use sancho_profile::detect;
 
@@ -75,11 +77,31 @@ enum Command {
         #[arg(required = true, trailing_var_arg = true, allow_hyphen_values = true)]
         command: Vec<String>,
     },
+    /// List, forget or export what sancho learned from your answers.
+    Learned {
+        #[command(subcommand)]
+        action: Option<LearnedAction>,
+    },
     /// Undo the last undo.
     Redo {
         /// Show what would be redone and exit.
         #[arg(long, short = 'n')]
         dry_run: bool,
+    },
+}
+
+#[derive(Subcommand, Debug)]
+enum LearnedAction {
+    /// List learned answers (the default).
+    List,
+    /// Forget a learned answer.
+    Rm { id: u32 },
+    /// Write a learned answer to a file for sharing, with personal details removed.
+    Export {
+        id: u32,
+        /// Where to write it (default: sancho-learned-<id>.toml).
+        #[arg(long, short)]
+        output: Option<PathBuf>,
     },
 }
 
@@ -140,6 +162,11 @@ fn main() -> ExitCode {
         }
         Some(Command::Redo { dry_run }) => history::undo(history::Target::Redo, &[], dry_run),
         Some(Command::Explain { command }) => explain(&command.join(" ")),
+        Some(Command::Learned { action }) => match action.unwrap_or(LearnedAction::List) {
+            LearnedAction::List => learned::list(),
+            LearnedAction::Rm { id } => learned::remove(id),
+            LearnedAction::Export { id, output } => learned::export(id, output),
+        },
         None if cli.request.is_empty() => {
             let _ = Cli::command().print_help();
             ExitCode::SUCCESS
@@ -213,6 +240,12 @@ fn run_request(cli: &Cli) -> ExitCode {
     let matcher = Matcher::new(&lib);
     let interactive = io::stdin().is_terminal();
     let mut answers = Answers::default();
+    // Answers to earlier questions; without a store, sancho just asks.
+    let mut store = learned::open()
+        .map_err(|e| eprintln!("sancho: {e}; answers won't be remembered"))
+        .ok();
+    let phrase = matcher.phrase(&text);
+    let mut used_learned: Vec<(u32, String)> = Vec::new();
 
     loop {
         let (question, labels, pick): (String, Vec<String>, Pick) =
@@ -230,6 +263,7 @@ fn run_request(cli: &Cli) -> ExitCode {
                                 return ExitCode::FAILURE;
                             }
                         };
+                    plan.learned = used_learned.clone();
                     for (typed, read) in corrections.iter().rev() {
                         plan.notes
                             .insert(0, format!("Read \"{typed}\" as \"{read}\"."));
@@ -253,6 +287,22 @@ fn run_request(cli: &Cli) -> ExitCode {
                     };
                 }
                 Interpretation::ChooseRecipe { options, suggested } => {
+                    let remembered = store.as_ref().and_then(|s| s.alias(&phrase)).and_then(|i| {
+                        match &i.learned {
+                            Learned::Alias { recipe, .. } if options.contains(recipe) => {
+                                Some((i.id, i.describe(), recipe.clone()))
+                            }
+                            _ => None,
+                        }
+                    });
+                    if let Some((id, what, recipe)) = remembered {
+                        answers.recipe = Some(recipe);
+                        used_learned.push((id, what));
+                        if let Some(s) = store.as_mut() {
+                            let _ = s.used(id);
+                        }
+                        continue;
+                    }
                     let question = if suggested {
                         "I'm not sure what you mean. Did you want to:"
                     } else {
@@ -265,11 +315,44 @@ fn run_request(cli: &Cli) -> ExitCode {
                     (question.to_string(), labels, Pick::Recipe(options))
                 }
                 Interpretation::ChooseValue {
-                    slot, candidates, ..
+                    recipe,
+                    slot,
+                    candidates,
                 } => {
+                    let mention = matcher
+                        .mentions_for(&text, &recipe)
+                        .0
+                        .get(&slot)
+                        .map(|m| matcher.phrase(m))
+                        .unwrap_or_default();
+                    // Only a value that is still among the live candidates counts.
+                    let remembered = store
+                        .as_ref()
+                        .and_then(|s| s.preference(&recipe, &slot, &mention))
+                        .and_then(|i| match &i.learned {
+                            Learned::Preference { key, .. } => candidates
+                                .iter()
+                                .find(|c| &c.value.key == key)
+                                .map(|c| (i.id, i.describe(), c.value.clone())),
+                            _ => None,
+                        });
+                    if let Some((id, what, value)) = remembered {
+                        answers.values.insert(slot, vec![value]);
+                        used_learned.push((id, what));
+                        if let Some(s) = store.as_mut() {
+                            let _ = s.used(id);
+                        }
+                        continue;
+                    }
                     let labels = candidates.iter().map(|c| c.value.display.clone()).collect();
                     let values = candidates.into_iter().map(|c| c.value).collect();
-                    (format!("Which {slot}?"), labels, Pick::Value(slot, values))
+                    let pick = Pick::Value {
+                        recipe,
+                        slot: slot.clone(),
+                        mention,
+                        values,
+                    };
+                    (format!("Which {slot}?"), labels, pick)
                 }
                 Interpretation::NotFound { reason, .. } => {
                     eprintln!("sancho: {reason}");
@@ -290,7 +373,23 @@ fn run_request(cli: &Cli) -> ExitCode {
         }
         let mut stdin = io::stdin().lock();
         match ask::choose(&mut stdin, &mut io::stdout(), &question, &labels) {
-            Ok(Some(i)) => pick.apply(i, &mut answers),
+            Ok(Some(i)) => {
+                if let (Some(s), Some(learned)) = (store.as_mut(), pick.learning(i, &phrase)) {
+                    let what = sancho_learn::Item {
+                        id: 0,
+                        learned: learned.clone(),
+                        uses: 0,
+                    }
+                    .describe();
+                    match s.learn(learned) {
+                        Ok(id) => {
+                            println!("Remembered: {what} (forget it: sancho learned rm {id})")
+                        }
+                        Err(e) => eprintln!("sancho: couldn't remember that answer: {e}"),
+                    }
+                }
+                pick.apply(i, &mut answers)
+            }
             _ => {
                 println!("Cancelled; nothing was changed.");
                 return ExitCode::SUCCESS;
@@ -302,14 +401,45 @@ fn run_request(cli: &Cli) -> ExitCode {
 /// What the options in a question stand for.
 enum Pick {
     Recipe(Vec<String>),
-    Value(String, Vec<sancho_resolve::Value>),
+    Value {
+        recipe: String,
+        slot: String,
+        /// The user's words for the slot, normalized.
+        mention: String,
+        values: Vec<sancho_resolve::Value>,
+    },
 }
 
 impl Pick {
+    /// What to remember about picking option `i`.
+    fn learning(&self, i: usize, phrase: &str) -> Option<Learned> {
+        match self {
+            Pick::Recipe(ids) => Some(Learned::Alias {
+                phrase: phrase.to_string(),
+                recipe: ids.get(i)?.clone(),
+            }),
+            Pick::Value {
+                recipe,
+                slot,
+                mention,
+                values,
+            } => {
+                let v = values.get(i)?;
+                Some(Learned::Preference {
+                    recipe: recipe.clone(),
+                    slot: slot.clone(),
+                    mention: mention.clone(),
+                    key: v.key.clone(),
+                    display: v.display.clone(),
+                })
+            }
+        }
+    }
+
     fn apply(self, i: usize, answers: &mut Answers) {
         match self {
             Pick::Recipe(ids) => answers.recipe = ids.into_iter().nth(i),
-            Pick::Value(slot, values) => {
+            Pick::Value { slot, values, .. } => {
                 answers
                     .values
                     .insert(slot, values.into_iter().skip(i).take(1).collect());

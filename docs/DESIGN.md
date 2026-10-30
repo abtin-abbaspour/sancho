@@ -363,6 +363,20 @@ sessions can be saved as learned playbooks.
 - Global trust signal = **verification**, not popularity: "tested in CI on profiles X, Y,
   last verified <date>".
 
+### Implementation (MVP)
+- Store: `$XDG_DATA_HOME/sancho/learned.json` (default `~/.local/share`), written
+  atomically. Items have stable numeric IDs and a local use count.
+- **Aliases**: picking a recipe from a question remembers the normalized request →
+  recipe; later it answers the same question, but only if that recipe is among the
+  options offered again. **Preferences**: picking a value remembers recipe + slot + the
+  user's words → value key; it applies only if the key is still a live candidate.
+- Both are printed when saved ("Remembered: … (forget it: sancho learned rm N)") and
+  listed under "Learned from your earlier answers" in every plan that used them.
+- `sancho learned [list]`, `sancho learned rm <id>`, `sancho learned export <id> [-o file]`.
+  Export shows the exact scrubbed text, then asks before writing; it refuses to overwrite
+  and never sends anything. The scrubber replaces login users, the hostname, saved Wi-Fi
+  names (from NetworkManager), `/home/<name>` paths, IPv4/IPv6 and MAC addresses.
+
 ## 11. Models
 
 Model-agnostic by contract: input = request + candidate lists; output = constrained JSON

@@ -25,6 +25,8 @@ pub enum Query {
     SyncPackages,
     /// One-line man page summaries for a program (`man -f <name>`).
     ManSummary(String),
+    /// Saved NetworkManager connections: `name:type` per line.
+    NmConnections,
 }
 
 impl Query {
@@ -37,6 +39,7 @@ impl Query {
             Query::ManSummary(name) => {
                 return vec!["man".into(), "-f".into(), "--".into(), name.clone()]
             }
+            Query::NmConnections => &["nmcli", "-t", "-f", "NAME,TYPE", "connection", "show"],
         };
         fixed.iter().map(|s| s.to_string()).collect()
     }
@@ -49,6 +52,7 @@ impl Query {
             Query::InstalledPackages => "installed-packages.txt".into(),
             Query::SyncPackages => "sync-packages.txt".into(),
             Query::ManSummary(name) => format!("man-f-{name}.txt"),
+            Query::NmConnections => "nm-connections.txt".into(),
         }
     }
 
