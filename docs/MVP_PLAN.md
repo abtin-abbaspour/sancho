@@ -97,7 +97,8 @@ appears; failed step triggers rollback offer; undo of undo works.
 - `sancho explain "<cmd>"` via tree-sitter-bash + primitive schemas: per-command and
   per-flag explanation + risk; unknown commands/flags clearly marked.
 - NL routing for "what does X do" / "explain X"; "help me with X" → ask explain/fix/do.
-- Tool/concept questions answered from bundled tldr-pages + local man pages.
+- Tool/concept questions answered from the system's own man pages (`man -f`, `man`); no
+  bundled or downloaded documentation.
 
 **Done when:** explain covers all primitives' flags; unknown flags are flagged, never guessed.
 

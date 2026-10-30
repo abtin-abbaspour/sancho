@@ -327,8 +327,8 @@ nothing matches). Pronouns resolve to the current session first.
 - X is a command string → parse with tree-sitter-bash, explain each command/flag from
   primitive schemas, show risk. Deterministic, no model. Useful for commands copied from
   forums/wikis.
-- X is a tool/concept ("what does pacman do") → local docs: bundled tldr-pages
-  (respect its license/attribution) + system man pages.
+- X is a tool/concept ("what does pacman do") → the system's own man pages (`man -f` for a
+  one-line answer, the page itself for more). Nothing is bundled or downloaded.
 - Open-ended tutoring → bring-your-own-model (post-MVP).
 - "help me with X" is ambiguous → ask: explain, fix, or do?
 

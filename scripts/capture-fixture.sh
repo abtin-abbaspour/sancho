@@ -2,14 +2,27 @@
 # Capture this machine as a sancho system fixture (eval/fixtures/systems/<name>).
 #
 # Read-only: runs only query commands and reads files; writes only into the new
-# fixture directory. Output is scrubbed (serials, usernames, group members,
-# MAC addresses are not copied), but review it before committing.
+# fixture directory. By default it captures the minimum: profile facts and HID
+# devices (names and vendor:product IDs). --full adds the unit list, installed
+# packages, network interfaces, browsers and group names, which describe what
+# is installed on the machine. Serials, MACs, usernames and group members are
+# never copied. Review the result before committing, and keep only what a test
+# needs.
 #
-# Usage: scripts/capture-fixture.sh <name> [--with-sync-db]
+# Usage: scripts/capture-fixture.sh <name> [--full] [--with-sync-db]
 set -euo pipefail
 export LC_ALL=C
 
-name=${1:?usage: $0 <name> [--with-sync-db]}
+name=${1:?usage: $0 <name> [--full] [--with-sync-db]}
+shift
+full=""; sync=""
+for arg in "$@"; do
+  case $arg in
+    --full) full=1 ;;
+    --with-sync-db) full=1; sync=1 ;;
+    *) echo "unknown option: $arg" >&2; exit 2 ;;
+  esac
+done
 out="$(dirname "$0")/../eval/fixtures/systems/$name"
 [[ -e $out ]] && { echo "$out already exists" >&2; exit 1; }
 mkdir -p "$out/root" "$out/queries"
@@ -51,9 +64,23 @@ udevadm info --export-db | awk '
   /^E: SUBSYSTEM=(hid|hidraw|input)$/ { keep = 1 }
   /^$/ { if (keep) printf "%s\n%s\n", path, props; path = ""; keep = "" }
 ' > "$out/queries/udev-db.txt"
+
+{
+  echo "PATH=/usr/local/bin:/usr/bin"
+  echo "USER=user"
+  [[ -n ${XDG_SESSION_TYPE:-} ]] && echo "XDG_SESSION_TYPE=$XDG_SESSION_TYPE"
+  [[ -n ${WAYLAND_DISPLAY:-} ]] && echo "WAYLAND_DISPLAY=$WAYLAND_DISPLAY"
+  [[ -n ${DISPLAY:-} ]] && echo "DISPLAY=$DISPLAY"
+} > "$out/env"
+
+if [[ -z $full ]]; then
+  echo "Captured $out (minimal) — review it before committing."
+  exit 0
+fi
+
 systemctl list-unit-files --no-legend --no-pager > "$out/queries/unit-files.txt"
 pacman -Q > "$out/queries/installed-packages.txt"
-[[ ${2:-} == --with-sync-db ]] && pacman -Sl > "$out/queries/sync-packages.txt"
+[[ -n $sync ]] && pacman -Sl > "$out/queries/sync-packages.txt"
 
 for dev in /sys/class/net/*; do
   n=$(basename "$dev")
@@ -73,13 +100,5 @@ done
 { cut -d: -f1,3 /etc/group | awk -F: '$2 < 1000 || $2 >= 60000 { print $1 ":x:" $2 ":" }'
   echo "user:x:1000:"; } | put /etc/group
 echo "user:x:1000:1000::/home/user:/bin/bash" | put /etc/passwd
-
-{
-  echo "PATH=/usr/local/bin:/usr/bin"
-  echo "USER=user"
-  [[ -n ${XDG_SESSION_TYPE:-} ]] && echo "XDG_SESSION_TYPE=$XDG_SESSION_TYPE"
-  [[ -n ${WAYLAND_DISPLAY:-} ]] && echo "WAYLAND_DISPLAY=$WAYLAND_DISPLAY"
-  [[ -n ${DISPLAY:-} ]] && echo "DISPLAY=$DISPLAY"
-} > "$out/env"
 
 echo "Captured $out — review it before committing."
