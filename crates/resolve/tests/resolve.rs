@@ -344,3 +344,88 @@ fn too_many_candidates_ask_for_detail() {
     .unwrap();
     assert!(no_match(r).contains("be more specific"));
 }
+
+/// Records the queries a resolver makes.
+struct Recording {
+    inner: FixtureSystem,
+    queries: std::cell::RefCell<Vec<Query>>,
+}
+
+impl sancho_core::System for Recording {
+    fn read(&self, path: &str) -> Option<String> {
+        self.inner.read(path)
+    }
+    fn read_dir(&self, path: &str) -> Vec<String> {
+        self.inner.read_dir(path)
+    }
+    fn exists(&self, path: &str) -> bool {
+        self.inner.exists(path)
+    }
+    fn is_executable(&self, path: &str) -> bool {
+        self.inner.is_executable(path)
+    }
+    fn env(&self, key: &str) -> Option<String> {
+        self.inner.env(key)
+    }
+    fn query(&self, q: Query) -> Option<String> {
+        self.queries.borrow_mut().push(q.clone());
+        self.inner.query(q)
+    }
+}
+
+#[test]
+fn unit_queries_are_narrowed_to_the_name_the_user_gave() {
+    let sys = Recording {
+        inner: system("workstation"),
+        queries: Default::default(),
+    };
+    let v = selected(
+        resolve(
+            &sys,
+            &slot(ValueType::SystemdUnit, &[]),
+            Some("the sshd service"),
+        )
+        .unwrap(),
+    );
+    assert_eq!(v.key, "sshd.service");
+    validate(&sys, ValueType::SystemdUnit, "cups.socket")
+        .unwrap()
+        .unwrap();
+    resolve(&sys, &slot(ValueType::SystemdUnit, &[]), Some("ss[h]d")).unwrap();
+    let patterns: Vec<Option<String>> = sys
+        .queries
+        .borrow()
+        .iter()
+        .map(|q| match q {
+            Query::UnitFiles(p) => p.clone(),
+            other => panic!("unexpected {other:?}"),
+        })
+        .collect();
+    assert_eq!(
+        patterns,
+        [Some("*sshd*".into()), Some("cups.socket".into()), None],
+        "an unsafe word falls back to the full list"
+    );
+    // A word that only appears in a unit's state doesn't match by name.
+    assert!(matches!(
+        run("workstation", ValueType::SystemdUnit, Some("disabled")),
+        Resolution::NoMatch(_)
+    ));
+}
+
+#[test]
+fn cached_systems_run_each_query_once() {
+    let rec = Recording {
+        inner: system("workstation"),
+        queries: Default::default(),
+    };
+    let sys = sancho_core::Cached::new(&rec);
+    for name in ["vlc", "git", "firefox"] {
+        selected(resolve(&sys, &slot(ValueType::Package, &[]), Some(name)).unwrap());
+    }
+    assert_eq!(
+        rec.queries.borrow().len(),
+        2,
+        "pacman -Q and -Sl, once each"
+    );
+}

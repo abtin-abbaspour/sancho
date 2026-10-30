@@ -191,7 +191,7 @@ fn run_request(cli: &Cli) -> ExitCode {
     };
     let sys: Box<dyn System> = match &cli.fixture {
         Some(dir) => Box::new(FixtureSystem::new(dir)),
-        None => Box::new(LiveSystem),
+        None => Box::new(sancho_core::Cached::new(LiveSystem)),
     };
     let dry_run = cli.dry_run || cli.fixture.is_some();
     let mut text = cli.request.join(" ");

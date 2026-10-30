@@ -114,6 +114,8 @@ appears; failed step triggers rollback offer; undo of undo works.
 - Draft `PKGBUILD` (do not publish).
 
 **Done when:** peak RSS < 100 MB, median latency reported.
+Result: sancho peaks at ~15 MiB; median 2.2 ms per request on fixtures, 8.8 ms live
+(see `docs/BENCH.md`). Package requests briefly add `pacman -Sl` (~86 MiB) as a child.
 
 ---
 

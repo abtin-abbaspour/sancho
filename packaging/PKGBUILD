@@ -1,0 +1,52 @@
+# Draft — not published. Before publishing: set `url` to the real repository,
+# tag a release, and confirm the name is free on the AUR.
+# Maintainer: Abtin Abbaspour <34379699+abtin-abbaspour@users.noreply.github.com>
+
+pkgname=sancho
+pkgver=0.0.1
+pkgrel=1
+pkgdesc="Plain-language Arch Linux tasks from verified recipes, with previews, a journal and undo"
+arch=('x86_64' 'aarch64')
+url="https://github.com/OWNER/sancho"
+license=('MIT OR Apache-2.0')
+depends=('gcc-libs' 'glibc' 'pacman' 'sudo' 'systemd')
+optdepends=(
+  'man-db: one-line summaries for programs sancho has no notes on'
+  'networkmanager: Wi-Fi recipes'
+  'iwd: Wi-Fi recipes'
+  'pacman-contrib: trimming the package cache after updates'
+  'snapper: snapshots before system updates'
+  'timeshift: snapshots before system updates'
+)
+makedepends=('cargo' 'git')
+source=("$pkgname::git+$url#tag=v$pkgver")
+sha256sums=('SKIP')
+
+prepare() {
+  cd "$pkgname"
+  export RUSTUP_TOOLCHAIN=stable
+  cargo fetch --locked --target "$(rustc -vV | sed -n 's/host: //p')"
+}
+
+build() {
+  cd "$pkgname"
+  export RUSTUP_TOOLCHAIN=stable
+  export CARGO_TARGET_DIR=target
+  cargo build --frozen --release -p sancho
+}
+
+check() {
+  cd "$pkgname"
+  export RUSTUP_TOOLCHAIN=stable
+  # Container tests need podman and are skipped here (they are #[ignore]).
+  cargo test --frozen --workspace
+}
+
+package() {
+  cd "$pkgname"
+  install -Dm0755 -t "$pkgdir/usr/bin/" target/release/sancho
+  install -d "$pkgdir/usr/share/sancho"
+  cp -r --no-preserve=ownership data "$pkgdir/usr/share/sancho/"
+  install -Dm0644 -t "$pkgdir/usr/share/licenses/$pkgname/" LICENSE-MIT LICENSE-APACHE
+  install -Dm0644 -t "$pkgdir/usr/share/doc/$pkgname/" docs/DESIGN.md
+}

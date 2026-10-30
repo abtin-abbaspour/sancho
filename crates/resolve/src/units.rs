@@ -5,10 +5,10 @@ use sancho_core::{Query, System};
 
 use crate::{ResolveError, Value};
 
-pub fn enumerate(sys: &dyn System) -> Result<Vec<Value>, ResolveError> {
-    let out = sys
-        .query(Query::UnitFiles)
-        .ok_or(ResolveError::Unavailable(Query::UnitFiles))?;
+/// All unit files, or with `pattern` (a systemctl glob) only matching ones.
+pub fn enumerate(sys: &dyn System, pattern: Option<String>) -> Result<Vec<Value>, ResolveError> {
+    let q = Query::UnitFiles(pattern);
+    let out = sys.query(q.clone()).ok_or(ResolveError::Unavailable(q))?;
     Ok(out
         .lines()
         .filter_map(|line| {

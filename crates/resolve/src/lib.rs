@@ -91,9 +91,19 @@ pub const MAX_CANDIDATES: usize = 10;
 
 /// Every value of `ty` on the system, sorted by display name.
 pub fn enumerate(sys: &dyn System, ty: ValueType) -> Result<Vec<Value>, ResolveError> {
+    enumerate_hinted(sys, ty, None)
+}
+
+/// Like [`enumerate`]; for units, `hint` narrows the system query (a glob
+/// systemctl understands). Callers still filter, so a hint only saves time.
+fn enumerate_hinted(
+    sys: &dyn System,
+    ty: ValueType,
+    hint: Option<String>,
+) -> Result<Vec<Value>, ResolveError> {
     let mut values = match ty {
         ValueType::HidDevice => hid::enumerate(sys)?,
-        ValueType::SystemdUnit => units::enumerate(sys)?,
+        ValueType::SystemdUnit => units::enumerate(sys, hint)?,
         ValueType::Package => packages::enumerate(sys)?,
         ValueType::NetIface => net::enumerate(sys),
         ValueType::Browser => browser::enumerate(sys),
@@ -107,7 +117,10 @@ pub fn enumerate(sys: &dyn System, ty: ValueType) -> Result<Vec<Value>, ResolveE
 
 /// Re-checks that a previously chosen key still exists (e.g. at plan time).
 pub fn validate(sys: &dyn System, ty: ValueType, key: &str) -> Result<Option<Value>, ResolveError> {
-    Ok(enumerate(sys, ty)?.into_iter().find(|v| v.key == key))
+    let hint = (ty == ValueType::SystemdUnit).then(|| key.to_string());
+    Ok(enumerate_hinted(sys, ty, hint)?
+        .into_iter()
+        .find(|v| v.key == key))
 }
 
 /// Resolves a recipe slot from what the user said (`mention`), if anything.
@@ -123,7 +136,19 @@ pub fn resolve(
     mention: Option<&str>,
 ) -> Result<Resolution, ResolveError> {
     let ty = slot.ty;
-    let values: Vec<Value> = enumerate(sys, ty)?
+    // The first meaningful word narrows the unit query: `*sshd*`.
+    let hint = mention
+        .map(str::to_lowercase)
+        .and_then(|m| {
+            m.split_whitespace()
+                .find(|w| {
+                    !FILLER.contains(w) && !generic_noun(ty, w) && class_word(ty, w).is_none()
+                })
+                .map(String::from)
+        })
+        .filter(|w| ty == ValueType::SystemdUnit && sancho_core::value::safe_token(w, ":_.-@", 255))
+        .map(|w| format!("*{w}*"));
+    let values: Vec<Value> = enumerate_hinted(sys, ty, hint)?
         .into_iter()
         .filter(|v| passes_filters(v, ty, &slot.filter))
         .collect();
@@ -160,7 +185,12 @@ pub fn resolve(
         .into_iter()
         .filter(|v| tags.iter().all(|t| v.tags.contains(t)))
         .filter(|v| {
-            let hay = format!("{} {}", v.display, v.key).to_lowercase();
+            // Units match on their name only, so a narrowed query (by name)
+            // and the full list always agree.
+            let hay = match ty {
+                ValueType::SystemdUnit => v.key.to_lowercase(),
+                _ => format!("{} {}", v.display, v.key).to_lowercase(),
+            };
             words.iter().all(|w| hay.contains(w))
         })
         .collect();

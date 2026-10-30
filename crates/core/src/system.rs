@@ -13,12 +13,13 @@ use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 use std::time::{Duration, Instant};
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum Query {
     /// All devices with their udev properties.
     UdevDb,
     /// Installed unit files and their enablement state.
-    UnitFiles,
+    /// With a pattern (`*sshd*`), only matching units: much faster than all.
+    UnitFiles(Option<String>),
     /// Installed packages: `name version` per line.
     InstalledPackages,
     /// Packages in the sync databases: `repo name version [installed]`.
@@ -33,7 +34,17 @@ impl Query {
     pub fn argv(&self) -> Vec<String> {
         let fixed: &[&str] = match self {
             Query::UdevDb => &["udevadm", "info", "--export-db"],
-            Query::UnitFiles => &["systemctl", "list-unit-files", "--no-legend", "--no-pager"],
+            Query::UnitFiles(pattern) => {
+                let mut argv: Vec<String> =
+                    ["systemctl", "list-unit-files", "--no-legend", "--no-pager"]
+                        .iter()
+                        .map(|s| s.to_string())
+                        .collect();
+                if let Some(p) = pattern {
+                    argv.extend(["--".to_string(), p.clone()]);
+                }
+                return argv;
+            }
             Query::InstalledPackages => &["pacman", "-Q"],
             Query::SyncPackages => &["pacman", "-Sl"],
             Query::ManSummary(name) => {
@@ -48,7 +59,8 @@ impl Query {
     pub fn fixture_name(&self) -> String {
         match self {
             Query::UdevDb => "udev-db.txt".into(),
-            Query::UnitFiles => "unit-files.txt".into(),
+            // Fixtures hold the full list; resolvers filter it the same way.
+            Query::UnitFiles(_) => "unit-files.txt".into(),
             Query::InstalledPackages => "installed-packages.txt".into(),
             Query::SyncPackages => "sync-packages.txt".into(),
             Query::ManSummary(name) => format!("man-f-{name}.txt"),
@@ -60,6 +72,10 @@ impl Query {
     fn is_safe(&self) -> bool {
         match self {
             Query::ManSummary(name) => crate::value::safe_token(name, "._+-", 64),
+            Query::UnitFiles(Some(p)) => {
+                let inner = p.trim_start_matches('*').trim_end_matches('*');
+                crate::value::safe_token(inner, ":_.-@\\", 255)
+            }
             _ => true,
         }
     }
@@ -106,6 +122,79 @@ fn sorted_dir(dir: &Path) -> Vec<String> {
 
 fn executable(path: &Path) -> bool {
     fs::metadata(path).is_ok_and(|m| m.is_file() && m.permissions().mode() & 0o111 != 0)
+}
+
+impl<T: System + ?Sized> System for &T {
+    fn read(&self, path: &str) -> Option<String> {
+        (**self).read(path)
+    }
+
+    fn read_dir(&self, path: &str) -> Vec<String> {
+        (**self).read_dir(path)
+    }
+
+    fn exists(&self, path: &str) -> bool {
+        (**self).exists(path)
+    }
+
+    fn is_executable(&self, path: &str) -> bool {
+        (**self).is_executable(path)
+    }
+
+    fn env(&self, key: &str) -> Option<String> {
+        (**self).env(key)
+    }
+
+    fn query(&self, q: Query) -> Option<String> {
+        (**self).query(q)
+    }
+}
+
+/// Remembers query results for the life of one request, so resolving several
+/// values of the same type (`install vlc and gimp`) runs each query once.
+pub struct Cached<S> {
+    inner: S,
+    results: std::cell::RefCell<std::collections::HashMap<Query, Option<String>>>,
+}
+
+impl<S: System> Cached<S> {
+    pub fn new(inner: S) -> Cached<S> {
+        Cached {
+            inner,
+            results: Default::default(),
+        }
+    }
+}
+
+impl<S: System> System for Cached<S> {
+    fn read(&self, path: &str) -> Option<String> {
+        self.inner.read(path)
+    }
+
+    fn read_dir(&self, path: &str) -> Vec<String> {
+        self.inner.read_dir(path)
+    }
+
+    fn exists(&self, path: &str) -> bool {
+        self.inner.exists(path)
+    }
+
+    fn is_executable(&self, path: &str) -> bool {
+        self.inner.is_executable(path)
+    }
+
+    fn env(&self, key: &str) -> Option<String> {
+        self.inner.env(key)
+    }
+
+    fn query(&self, q: Query) -> Option<String> {
+        if let Some(hit) = self.results.borrow().get(&q) {
+            return hit.clone();
+        }
+        let out = self.inner.query(q.clone());
+        self.results.borrow_mut().insert(q, out.clone());
+        out
+    }
 }
 
 /// The machine sancho runs on.
