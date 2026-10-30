@@ -1,0 +1,15 @@
+bluez 5.79-1
+chromium 131.0.6778.85-1
+cups 2:2.4.11-1
+docker 1:27.3.1-1
+firefox 133.0-1
+git 2.47.1-1
+htop 3.3.0-3
+nginx 1.26.2-2
+openssh 9.9p1-2
+pacman-contrib 1.10.6-2
+paru-bin 2.0.4-1
+snapper 0.12.0-1
+steam 1.0.0.81-2
+vim 9.1.0866-1
+vlc 3.0.21-8

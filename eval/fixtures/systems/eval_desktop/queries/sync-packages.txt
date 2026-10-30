@@ -1,0 +1,27 @@
+core openssh 9.9p1-2 [installed]
+core pacman-contrib 1.10.6-2 [installed]
+extra bluez 5.79-1 [installed]
+extra chromium 131.0.6778.85-1 [installed]
+extra cups 2:2.4.11-1 [installed]
+extra docker 1:27.3.1-1 [installed]
+extra firefox 133.0-1 [installed]
+extra firefox-developer-edition 134.0b9-1
+extra firefox-i18n-de 133.0-1
+extra gimp 2.10.38-4
+extra git 2.47.1-1 [installed]
+extra htop 3.3.0-3 [installed]
+extra inkscape 1.4-3
+extra kdenlive 24.08.3-1
+extra libreoffice-fresh 24.8.3-1
+extra neovim 0.10.2-2
+extra nginx 1.26.2-2 [installed]
+extra obs-studio 31.0.0-1
+extra python 3.12.7-1
+extra python-pip 24.3.1-1
+extra snapper 0.12.0-1 [installed]
+extra thunderbird 128.5.0-1
+extra tmux 3.5_a-2
+extra vim 9.1.0866-1 [installed]
+extra vlc 3.0.21-8 [installed]
+extra wireshark-qt 4.4.2-1
+multilib steam 1.0.0.81-2 [installed]

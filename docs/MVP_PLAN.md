@@ -52,7 +52,7 @@ with both names; with a keyboard + mouse → mouse excluded.
 - Normalization (synonyms, typo correction against library vocabulary).
 - Pattern matching with slot capture; BM25 fallback over recipe summaries/patterns.
 - Clarification policy: margin between top-2, missing/ambiguous slots, low score.
-- `eval` binary: runs `eval/requests.toml`, reports intent accuracy, slot accuracy,
+- `sancho-eval` binary: runs `eval/requests.toml`, reports intent accuracy, slot accuracy,
   wrong-plan rate, clarification rate.
 - Write ≥ 150 eval requests across the starter recipes, including paraphrases, typos,
   and requests that *should* clarify or not match.
@@ -65,7 +65,7 @@ clarify rate is reported, target < 20%).
 warn that upgrades aren't reversible without snapshots), `package.install`,
 `package.remove`, `service.restart`, `service.enable`, `service.disable`,
 `network.restart_wifi` (profile-aware: NetworkManager vs iwd), `device.grant_hid_browser_access`,
-`user.add_to_group`, `disk.usage` (read-only).
+`user.add_to_group`, `disk.usage` (read-only); also `service.start`, `service.stop`.
 
 **Done when:** each recipe has ≥ 3 eval requests and either a passing container test or
 a declared `verified_by` with reason.

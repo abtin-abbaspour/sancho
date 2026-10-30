@@ -1,0 +1,750 @@
+# Matching eval: natural-language requests and the expected result.
+#
+# expect: a recipe id (a plan with these slot values is the right answer),
+#         "clarify" (asking the user is the right answer), or
+#         "unsupported" (no recipe should be offered; clarifying is also accepted).
+# slots:  expected resolved keys (unit names, package names, vid:pid, desktop IDs).
+# system: fixture under eval/fixtures/systems (default below).
+#
+# Run: cargo run -p sancho-eval -- eval/requests.toml
+
+system = "eval_desktop"
+
+[[case]]
+request = "update my system"
+expect = "system.update"
+
+[[case]]
+request = "Update the system please"
+expect = "system.update"
+
+[[case]]
+request = "upgrade"
+expect = "system.update"
+
+[[case]]
+request = "update"
+expect = "system.update"
+
+[[case]]
+request = "upgrade everything"
+expect = "system.update"
+
+[[case]]
+request = "update all my packages"
+expect = "system.update"
+
+[[case]]
+request = "do a full system upgrade"
+expect = "system.update"
+
+[[case]]
+request = "run a system update"
+expect = "system.update"
+
+[[case]]
+request = "update my arch"
+expect = "system.update"
+
+[[case]]
+request = "upgrade my laptop"
+expect = "system.update"
+
+[[case]]
+request = "install updates"
+expect = "system.update"
+
+[[case]]
+request = "get all updates"
+expect = "system.update"
+
+[[case]]
+request = "sync and update"
+expect = "system.update"
+
+[[case]]
+request = "updte my system"
+expect = "system.update"
+
+[[case]]
+request = "upgarde my computer"
+expect = "system.update"
+
+[[case]]
+request = "please upgrade the os"
+expect = "system.update"
+
+[[case]]
+request = "bring my system up to date"
+expect = "system.update"
+
+[[case]]
+request = "check for updates"
+expect = "clarify"
+
+[[case]]
+request = "update firefox"
+expect = "clarify"
+
+[[case]]
+request = "install vlc"
+expect = "package.install"
+slots = { packages = ["vlc"] }
+
+[[case]]
+request = "install gimp"
+expect = "package.install"
+slots = { packages = ["gimp"] }
+
+[[case]]
+request = "install obs-studio and gimp"
+expect = "package.install"
+slots = { packages = ["obs-studio", "gimp"] }
+
+[[case]]
+request = "install gimp, inkscape and kdenlive"
+expect = "package.install"
+slots = { packages = ["gimp", "inkscape", "kdenlive"] }
+
+[[case]]
+request = "install neovim tmux"
+expect = "package.install"
+slots = { packages = ["neovim", "tmux"] }
+
+[[case]]
+request = "please install thunderbird for me"
+expect = "package.install"
+slots = { packages = ["thunderbird"] }
+
+[[case]]
+request = "can you install wireshark-qt"
+expect = "package.install"
+slots = { packages = ["wireshark-qt"] }
+
+[[case]]
+request = "get me gimp"
+expect = "package.install"
+slots = { packages = ["gimp"] }
+
+[[case]]
+request = "download inkscape"
+expect = "package.install"
+slots = { packages = ["inkscape"] }
+
+[[case]]
+request = "i want to install python-pip"
+expect = "package.install"
+slots = { packages = ["python-pip"] }
+
+[[case]]
+request = "instal gimp"
+expect = "package.install"
+slots = { packages = ["gimp"] }
+
+[[case]]
+request = "install firefox"
+expect = "package.install"
+slots = { packages = ["firefox"] }
+
+[[case]]
+request = "install the package neovim"
+expect = "package.install"
+slots = { packages = ["neovim"] }
+
+[[case]]
+request = "install firefox-developer-edition"
+expect = "package.install"
+slots = { packages = ["firefox-developer-edition"] }
+
+[[case]]
+request = "install python"
+expect = "package.install"
+slots = { packages = ["python"] }
+
+[[case]]
+request = "Install LibreOffice-Fresh"
+expect = "package.install"
+slots = { packages = ["libreoffice-fresh"] }
+
+[[case]]
+request = "install fire"
+expect = "clarify"
+
+[[case]]
+request = "install photoshop"
+expect = "clarify"
+
+[[case]]
+request = "install"
+expect = "clarify"
+
+[[case]]
+request = "install vlc player"
+expect = "clarify"
+
+[[case]]
+request = "remove vlc"
+expect = "package.remove"
+slots = { packages = ["vlc"] }
+
+[[case]]
+request = "uninstall steam"
+expect = "package.remove"
+slots = { packages = ["steam"] }
+
+[[case]]
+request = "delete htop"
+expect = "package.remove"
+slots = { packages = ["htop"] }
+
+[[case]]
+request = "get rid of nginx"
+expect = "package.remove"
+slots = { packages = ["nginx"] }
+
+[[case]]
+request = "remove the package docker"
+expect = "package.remove"
+slots = { packages = ["docker"] }
+
+[[case]]
+request = "uninstall vlc and steam"
+expect = "package.remove"
+slots = { packages = ["vlc", "steam"] }
+
+[[case]]
+request = "i want to remove htop"
+expect = "package.remove"
+slots = { packages = ["htop"] }
+
+[[case]]
+request = "unistall vlc"
+expect = "package.remove"
+slots = { packages = ["vlc"] }
+
+[[case]]
+request = "remove vim"
+expect = "package.remove"
+slots = { packages = ["vim"] }
+
+[[case]]
+request = "can you uninstall the app steam"
+expect = "package.remove"
+slots = { packages = ["steam"] }
+
+[[case]]
+request = "remove gimp"
+expect = "clarify"
+
+[[case]]
+request = "uninstall python"
+expect = "clarify"
+
+[[case]]
+request = "delete everything"
+expect = "clarify"
+
+[[case]]
+request = "remove"
+expect = "clarify"
+
+[[case]]
+request = "restart sshd"
+expect = "service.restart"
+slots = { unit = "sshd.service" }
+
+[[case]]
+request = "restart nginx"
+expect = "service.restart"
+slots = { unit = "nginx.service" }
+
+[[case]]
+request = "restart the bluetooth service"
+expect = "service.restart"
+slots = { unit = "bluetooth.service" }
+
+[[case]]
+request = "restart docker"
+expect = "service.restart"
+slots = { unit = "docker.service" }
+
+[[case]]
+request = "restart cups"
+expect = "service.restart"
+slots = { unit = "cups.service" }
+
+[[case]]
+request = "bounce nginx"
+expect = "service.restart"
+slots = { unit = "nginx.service" }
+
+[[case]]
+request = "restart NetworkManager"
+expect = "service.restart"
+slots = { unit = "NetworkManager.service" }
+
+[[case]]
+request = "restart tlp"
+expect = "service.restart"
+slots = { unit = "tlp.service" }
+
+[[case]]
+request = "restrat sshd"
+expect = "service.restart"
+slots = { unit = "sshd.service" }
+
+[[case]]
+request = "restart the ssh daemon"
+expect = "service.restart"
+slots = { unit = "sshd.service" }
+
+[[case]]
+request = "restart fstrim.timer"
+expect = "service.restart"
+slots = { unit = "fstrim.timer" }
+
+[[case]]
+request = "restart cups.socket"
+expect = "service.restart"
+slots = { unit = "cups.socket" }
+
+[[case]]
+request = "restart"
+expect = "clarify"
+
+[[case]]
+request = "restart my computer"
+expect = "clarify"
+
+[[case]]
+request = "restart everything"
+expect = "clarify"
+
+[[case]]
+request = "start sshd"
+expect = "service.start"
+slots = { unit = "sshd.service" }
+
+[[case]]
+request = "start nginx"
+expect = "service.start"
+slots = { unit = "nginx.service" }
+
+[[case]]
+request = "start the docker service"
+expect = "service.start"
+slots = { unit = "docker.service" }
+
+[[case]]
+request = "launch the nginx daemon"
+expect = "service.start"
+slots = { unit = "nginx.service" }
+
+[[case]]
+request = "start avahi-daemon"
+expect = "service.start"
+slots = { unit = "avahi-daemon.service" }
+
+[[case]]
+request = "strat sshd"
+expect = "service.start"
+slots = { unit = "sshd.service" }
+
+[[case]]
+request = "start"
+expect = "clarify"
+
+[[case]]
+request = "stop nginx"
+expect = "service.stop"
+slots = { unit = "nginx.service" }
+
+[[case]]
+request = "stop the bluetooth service"
+expect = "service.stop"
+slots = { unit = "bluetooth.service" }
+
+[[case]]
+request = "shut down the docker daemon"
+expect = "service.stop"
+slots = { unit = "docker.service" }
+
+[[case]]
+request = "kill the cups service"
+expect = "service.stop"
+slots = { unit = "cups.service" }
+
+[[case]]
+request = "stop sddm"
+expect = "service.stop"
+slots = { unit = "sddm.service" }
+
+[[case]]
+request = "stop"
+expect = "clarify"
+
+[[case]]
+request = "enable sshd"
+expect = "service.enable"
+slots = { unit = "sshd.service" }
+
+[[case]]
+request = "enable the nginx service"
+expect = "service.enable"
+slots = { unit = "nginx.service" }
+
+[[case]]
+request = "start sshd at boot"
+expect = "service.enable"
+slots = { unit = "sshd.service" }
+
+[[case]]
+request = "start nginx on startup"
+expect = "service.enable"
+slots = { unit = "nginx.service" }
+
+[[case]]
+request = "make docker start at boot"
+expect = "service.enable"
+slots = { unit = "docker.service" }
+
+[[case]]
+request = "enable paccache.timer"
+expect = "service.enable"
+slots = { unit = "paccache.timer" }
+
+[[case]]
+request = "turn on the avahi-daemon service"
+expect = "service.enable"
+slots = { unit = "avahi-daemon.service" }
+
+[[case]]
+request = "enabel sshd"
+expect = "service.enable"
+slots = { unit = "sshd.service" }
+
+[[case]]
+request = "enable the firewall"
+expect = "clarify"
+
+[[case]]
+request = "enable"
+expect = "clarify"
+
+[[case]]
+request = "disable bluetooth"
+expect = "service.disable"
+slots = { unit = "bluetooth.service" }
+
+[[case]]
+request = "disable tlp"
+expect = "service.disable"
+slots = { unit = "tlp.service" }
+
+[[case]]
+request = "disable the ufw service"
+expect = "service.disable"
+slots = { unit = "ufw.service" }
+
+[[case]]
+request = "stop bluetooth at boot"
+expect = "service.disable"
+slots = { unit = "bluetooth.service" }
+
+[[case]]
+request = "don't start cronie at boot"
+expect = "service.disable"
+slots = { unit = "cronie.service" }
+
+[[case]]
+request = "turn off the tlp service"
+expect = "service.disable"
+slots = { unit = "tlp.service" }
+
+[[case]]
+request = "stop tlp from starting at boot"
+expect = "service.disable"
+slots = { unit = "tlp.service" }
+
+[[case]]
+request = "disable fstrim.timer"
+expect = "service.disable"
+slots = { unit = "fstrim.timer" }
+
+[[case]]
+request = "disable sshd"
+expect = "clarify"
+
+[[case]]
+request = "restart wifi"
+expect = "network.restart_wifi"
+
+[[case]]
+request = "restart my wifi"
+expect = "network.restart_wifi"
+
+[[case]]
+request = "reset the wireless"
+expect = "network.restart_wifi"
+
+[[case]]
+request = "reconnect wifi"
+expect = "network.restart_wifi"
+
+[[case]]
+request = "restart wi-fi"
+expect = "network.restart_wifi"
+
+[[case]]
+request = "turn my wifi off and on again"
+expect = "network.restart_wifi"
+
+[[case]]
+request = "restart the wifi adapter"
+expect = "network.restart_wifi"
+
+[[case]]
+request = "reboot my wireless connection"
+expect = "network.restart_wifi"
+
+[[case]]
+request = "cycle wifi"
+expect = "network.restart_wifi"
+
+[[case]]
+request = "restart wlan"
+expect = "network.restart_wifi"
+
+[[case]]
+request = "Restart my Wi-Fi!"
+expect = "network.restart_wifi"
+
+[[case]]
+request = "restart wifi"
+expect = "network.restart_wifi"
+system = "arch_iwd"
+
+[[case]]
+request = "restart my wifi"
+expect = "unsupported"
+system = "artix_openrc"
+
+[[case]]
+request = "fix my wifi"
+expect = "clarify"
+
+[[case]]
+request = "connect to my home wifi"
+expect = "clarify"
+
+[[case]]
+request = "let chromium configure my keyboard"
+expect = "device.grant_hid_browser_access"
+slots = { device = "3434:0121", browser = "chromium.desktop" }
+
+[[case]]
+request = "give brave access to my keyboard"
+expect = "device.grant_hid_browser_access"
+slots = { device = "3434:0121", browser = "brave-browser.desktop" }
+
+[[case]]
+request = "allow chromium to access my mouse"
+expect = "device.grant_hid_browser_access"
+slots = { device = "046d:c08b", browser = "chromium.desktop" }
+
+[[case]]
+request = "configure my keyboard in chromium"
+expect = "device.grant_hid_browser_access"
+slots = { device = "3434:0121", browser = "chromium.desktop" }
+
+[[case]]
+request = "let brave configure the g502"
+expect = "device.grant_hid_browser_access"
+slots = { device = "046d:c08b", browser = "brave-browser.desktop" }
+
+[[case]]
+request = "let chromium see my keychron"
+expect = "device.grant_hid_browser_access"
+slots = { device = "3434:0121", browser = "chromium.desktop" }
+
+[[case]]
+request = "set up my keyboard with brave"
+expect = "device.grant_hid_browser_access"
+slots = { device = "3434:0121", browser = "brave-browser.desktop" }
+
+[[case]]
+request = "let my browser configure my keyboard"
+expect = "clarify"
+
+[[case]]
+request = "enable webhid for my keyboard"
+expect = "clarify"
+
+[[case]]
+request = "let firefox access my keyboard"
+expect = "clarify"
+
+[[case]]
+request = "give chromium access to my joystick"
+expect = "clarify"
+
+[[case]]
+request = "make via see my keyboard"
+expect = "clarify"
+
+[[case]]
+request = "add me to the video group"
+expect = "user.add_to_group"
+slots = { user = "alice", group = "video" }
+
+[[case]]
+request = "add me to docker"
+expect = "user.add_to_group"
+slots = { user = "alice", group = "docker" }
+
+[[case]]
+request = "put me in the wireshark group"
+expect = "user.add_to_group"
+slots = { user = "alice", group = "wireshark" }
+
+[[case]]
+request = "add bob to the audio group"
+expect = "user.add_to_group"
+slots = { user = "bob", group = "audio" }
+
+[[case]]
+request = "make me a member of the input group"
+expect = "user.add_to_group"
+slots = { user = "alice", group = "input" }
+
+[[case]]
+request = "add me to uucp"
+expect = "user.add_to_group"
+slots = { user = "alice", group = "uucp" }
+
+[[case]]
+request = "give me docker access"
+expect = "user.add_to_group"
+slots = { user = "alice", group = "docker" }
+
+[[case]]
+request = "add me to wheel"
+expect = "user.add_to_group"
+slots = { user = "alice", group = "wheel" }
+
+[[case]]
+request = "add alice to lp"
+expect = "user.add_to_group"
+slots = { user = "alice", group = "lp" }
+
+[[case]]
+request = "add me to the plugdev group"
+expect = "clarify"
+
+[[case]]
+request = "add carol to video"
+expect = "clarify"
+
+[[case]]
+request = "show disk usage"
+expect = "disk.usage"
+
+[[case]]
+request = "how much disk space do i have"
+expect = "disk.usage"
+
+[[case]]
+request = "how much space is left"
+expect = "disk.usage"
+
+[[case]]
+request = "disk space"
+expect = "disk.usage"
+
+[[case]]
+request = "is my disk full"
+expect = "disk.usage"
+
+[[case]]
+request = "check storage space"
+expect = "disk.usage"
+
+[[case]]
+request = "how full are my drives"
+expect = "disk.usage"
+
+[[case]]
+request = "free space"
+expect = "disk.usage"
+
+[[case]]
+request = "show my disk space"
+expect = "disk.usage"
+
+[[case]]
+request = "how much free space is there"
+expect = "disk.usage"
+
+[[case]]
+request = "Disk usage?"
+expect = "disk.usage"
+
+[[case]]
+request = "format my disk"
+expect = "clarify"
+
+[[case]]
+request = "make me a sandwich"
+expect = "unsupported"
+
+[[case]]
+request = "what's the weather like"
+expect = "unsupported"
+
+[[case]]
+request = "rm -rf /"
+expect = "unsupported"
+
+[[case]]
+request = "change my password"
+expect = "unsupported"
+
+[[case]]
+request = "open firefox"
+expect = "unsupported"
+
+[[case]]
+request = "write me a poem"
+expect = "unsupported"
+
+[[case]]
+request = "sudo pacman -Rns $(pacman -Qtdq)"
+expect = "unsupported"
+
+[[case]]
+request = "how do i exit vim"
+expect = "unsupported"
+
+[[case]]
+request = "mount my usb stick"
+expect = "unsupported"
+
+[[case]]
+request = "set my timezone to berlin"
+expect = "unsupported"
+
+[[case]]
+request = "reboot"
+expect = "clarify"
+
+[[case]]
+request = "shutdown my computer"
+expect = "clarify"
+
+[[case]]
+request = "delete my files"
+expect = "clarify"
+
+[[case]]
+request = "upgrade my kernel only"
+expect = "clarify"

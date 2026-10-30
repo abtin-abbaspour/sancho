@@ -12,4 +12,7 @@ cargo clippy --workspace --all-targets -- -D warnings
 echo "==> cargo test"
 cargo test --workspace
 
+echo "==> matching eval (fails on any wrong plan)"
+cargo run -q -p sancho-eval -- eval/requests.toml
+
 echo "CI passed."

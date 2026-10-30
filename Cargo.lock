@@ -159,6 +159,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "sancho-eval"
+version = "0.0.1"
+dependencies = [
+ "sancho-core",
+ "sancho-match",
+ "sancho-profile",
+ "serde",
+ "toml",
+]
+
+[[package]]
 name = "sancho-exec"
 version = "0.0.1"
 
@@ -177,6 +188,11 @@ version = "0.0.1"
 [[package]]
 name = "sancho-match"
 version = "0.0.1"
+dependencies = [
+ "sancho-core",
+ "sancho-profile",
+ "sancho-resolve",
+]
 
 [[package]]
 name = "sancho-plan"

@@ -36,9 +36,27 @@ Routing falls through tiers only when the higher tier can't serve the request. T
 always sees which tier produced the plan: **verified recipe** / **checked command** /
 **unverified**.
 
-Clarification is decided by code, not a model: ask when the top two matches are within a
-margin, when a required slot has 0 or >1 candidates after filtering, or when confidence is
-below threshold.
+Clarification is decided by code, not a model (`sancho-match`):
+
+1. **Normalize:** lowercase, trim punctuation, drop politeness words, apply
+   `data/synonyms.toml` (spelling variants and shorthand only).
+2. **Patterns:** a request must match a recipe pattern in full. Among matching recipes the
+   one with the most literal words wins ("restart wifi" beats "restart {unit}"); a tie
+   asks which recipe was meant. If the best match is a recipe this system can't run
+   (profile `requires`), the answer is "unsupported, because …" — a weaker match never
+   stands in for it.
+3. **Typos:** only if no pattern matched, words of 5+ letters not in the library vocabulary
+   are corrected to the single closest vocabulary word (1 edit; 2 for 8+ letters) and
+   matching is retried. Corrections are shown to the user. Slot values always come from
+   the words as typed, never corrected ones.
+4. **Search:** if still nothing matched, BM25 over recipe summaries, domains and pattern
+   words produces up to three *suggestions*. Search never produces a plan by itself.
+5. **Slots:** captured words go to the resolvers (§4). One value → selected; several →
+   the user picks; none → the user is told what wasn't found. Lists ("vlc, gimp and obs")
+   split on commas and "and"; a run of exact names ("vim git htop") is also accepted.
+
+A plan therefore exists only when a full pattern matched and every slot resolved to
+exactly one system value; everything else is a question.
 
 ## 3. Tiers
 
@@ -110,6 +128,13 @@ Rules enforced at load time:
 - A `multiple` slot may only fill a `variadic` arg.
 - Recipe `risk` is at least the highest step primitive risk.
 - Every slot is used by some step; `tests.reason` is required unless `verified_by = "container"`.
+- Names of system objects written as literals (`unit = "iwd.service"`) must be valid for
+  their type; the planner checks they exist on the system.
+
+Steps may declare their own `requires` (profile facts, same form as the recipe's); a step
+whose requirements don't hold is left out, and the plan says so — e.g. "take a snapshot"
+only with `snapshot_tool = ["snapper"]`. `optional = true` skips a step, with a note,
+when its command isn't installed (e.g. `paccache` from `pacman-contrib`).
 
 ### Tier 2 — command primitives (MVP: schemas used by recipes and `explain`; standalone
 generation is post-MVP)
@@ -326,9 +351,13 @@ don't trust raw probabilities.
 
 ## 13. Evaluation
 
-`eval/requests.toml`: NL request → expected recipe + slots (or `clarify`).
-Metrics: intent accuracy, slot accuracy, **wrong-plan rate** (critical), clarification rate,
-latency, total RAM.
+`eval/requests.toml`: NL request → expected recipe + resolved slot keys, or `clarify` (asking
+is the right answer) or `unsupported`; each case runs against a fixture system
+(`eval/fixtures/systems`). `sancho-eval` reports intent accuracy, slot accuracy,
+**wrong-plan rate** (critical; CI fails on any wrong plan) and clarification rate, and fails
+if a recipe has fewer than 3 requests. Latency and total RAM are measured separately.
+The eval set is written alongside the patterns, so it measures regressions, not real-world
+accuracy; a held-out set of requests from real users is needed for that.
 Recipe verification layers: podman containers (packages/files), QEMU VMs (systemd/boot/
 kernel, post-MVP), fixture-based mocks (hardware resolvers), volunteer hardware testers.
 

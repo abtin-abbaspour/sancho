@@ -1,0 +1,3 @@
+PATH=/usr/local/bin:/usr/bin
+USER=alice
+XDG_SESSION_TYPE=wayland
